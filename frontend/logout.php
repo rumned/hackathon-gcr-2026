@@ -1,4 +1,16 @@
+<?php
+require __DIR__ . '/includes/api.php';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (api_logged_in()) {
+        api_request('POST', '/api/auth/logout', []);
+    }
+    api_forget_login();
+    session_regenerate_id(true);
+    header('Location: login.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,15 +36,15 @@
         You can always sign in again whenever you're ready.
     </p>
 
-    <div class="logout-actions">
-        <a href="login.php" class="btn-primary logout-button">
+    <form class="logout-actions" method="post">
+        <button type="submit" class="btn-primary logout-button">
             Yes, Log Out <span>&rarr;</span>
-        </a>
+        </button>
 
         <a href="homepage.php" class="btn-secondary">
             Cancel
         </a>
-    </div>
+    </form>
 
     <div class="logout-divider"></div>
 

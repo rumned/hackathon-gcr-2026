@@ -10,7 +10,7 @@ use App\Http\HttpError;
  * Subpanels under the detail view (Activities, History, Contacts, Opportunities, Leads, Cases).
  * Subpanel types from Modules:
  *   activities    open calls / meetings (Planned) and tasks (not Completed / Deferred)
- *   history       held / not held calls and meetings, completed / deferred tasks, notes
+ *   history       held / not held calls and meetings, completed / deferred tasks, notes, sent emails
  *   relationship  records linked through a relationship table
  *   foreign_key   records whose 'field' holds this record's id
  * The "Create" button in a subpanel is a normal create (POST /api/{module}) with
@@ -23,6 +23,7 @@ final class Subpanels
         'meetings' => "SELECT id, 'meetings' AS module, 'Meeting' AS type, name, status, date_start AS date, date_modified, assigned_user_id FROM meetings",
         'tasks' => "SELECT id, 'tasks' AS module, 'Task' AS type, name, status, date_due AS date, date_modified, assigned_user_id FROM tasks",
         'notes' => "SELECT id, 'notes' AS module, 'Note' AS type, name, NULL AS status, NULL AS date, date_modified, assigned_user_id FROM notes",
+        'emails' => "SELECT id, 'emails' AS module, 'Email' AS type, name, status, date_sent AS date, date_modified, assigned_user_id FROM emails",
     ];
 
     public static function list(string $moduleKey, string $id, string $name, array $query): array
@@ -142,6 +143,7 @@ final class Subpanels
                 self::ACTIVITY_SQL['meetings'] . $parent . " AND status IN ('Held', 'Not Held')",
                 self::ACTIVITY_SQL['tasks'] . $parent . " AND status IN ('Completed', 'Deferred')",
                 self::ACTIVITY_SQL['notes'] . $parent,
+                self::ACTIVITY_SQL['emails'] . $parent,
             ];
             $order = 'date_modified DESC, id';
         } else {

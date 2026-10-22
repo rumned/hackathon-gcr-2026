@@ -16,6 +16,10 @@ Table and column names follow SuiteCRM 7: UUID ids, a `deleted` flag for soft de
    mysql -u root -p -e "CREATE DATABASE crm CHARACTER SET utf8mb4"
    mysql -u root -p crm < sql/schema.sql
    ```
+   A database created from an earlier `schema.sql` only needs the migration:
+   ```
+   mysql -u root -p crm < sql/migrations/001_customer_fields_quotes_outbox.sql
+   ```
 2. Copy `config.example.php` to `config.php` and fill in the database details.
 3. Add the users and the sample data shown in the wireframe:
    ```
@@ -25,6 +29,17 @@ Table and column names follow SuiteCRM 7: UUID ids, a `deleted` flag for soft de
 4. Run it:
    - PHP's built-in server: `php -S localhost:8000 -t public public/index.php`
    - Apache (e.g. XAMPP): point the site, or a subfolder, at `public/`. `public/.htaccess` sends requests to `index.php` and needs `mod_rewrite`. The subfolder setup has not been tested.
+
+### Running with the frontend
+
+The frontend (`../frontend`) calls this API from PHP, so run both:
+
+```
+cd crm-backend && php -S 127.0.0.1:8000 -t public public/index.php
+cd frontend    && php -S 127.0.0.1:8080
+```
+
+Then open http://127.0.0.1:8080/login.php and log in as admin / changeme. The API address is set in `frontend/config.php`. With XAMPP, set it to the URL of `crm-backend/public` instead.
 
 ## How requests work
 
@@ -139,6 +154,25 @@ Email addresses are sent as a list, and the primary one is listed first in respo
 
 "Copy address from billing" is handled in the frontend: copy the `billing_address_*` values into `shipping_address_*` before saving.
 
+Accounts also have these customer fields, used by the CRMPro frontend: `contact_name`, `contact_title`, `phone_mobile`, `status` (New, Contacted, Qualified, Proposal, Won), `lead_source` and `tags` (comma-separated).
+
+### Quotations and outbox
+
+A quotation is created and emailed automatically when an opportunity enters the **Proposal/Price Quote** sales stage: when it is created in that stage, or moved into it by `PUT`, mass update or merge. Saving it again while it stays in that stage sends nothing. The quotation has one line (the opportunity's name and amount), is valid for 30 days and goes to the primary email address of the opportunity's account.
+
+If the opportunity has no account or no amount, no quotation is created. If the account has no email address, the quotation is created with status `Not sent`. In each case the assigned user gets an alert explaining why.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/accounts/{id}/quotes` | The account's quotations, newest first, with `items` and the `emails` sent for each |
+| GET | `/api/quotes/{id}` | One quotation. `status` is `Draft`, `Sent` or `Not sent` (see `send_error`) |
+| POST | `/api/quotes/{id}/discount` | `{"type": "percent" \| "amount", "value": 10, "label": "Autumn promo", "send": true}`. A value of 0 removes the discount. `send` (default true) emails the updated quotation |
+| POST | `/api/quotes/{id}/send` | Email the quotation again (`{}`) |
+| GET | `/api/outbox` | Emails sent by the backend, newest first. Query: `page`, `per_page`, `quote_id`, `parent_id` |
+| GET | `/api/outbox/{id}` | One email with its plain-text body (`description`) |
+
+All email goes through `Mailer::send()` in `src/Mailer.php`. The default transport, `outbox`, only saves the email (status `outbox`); nothing leaves the server. To deliver real email, add a transport in `Mailer::deliver()` and set `mail.transport` in `config.php`. Sent emails also appear in the account's History subpanel.
+
 ## Files
 
 ```
@@ -150,8 +184,11 @@ src/Subpanels.php     subpanels, Select and unlink
 src/Bulk.php          mass delete, mass update, export, import
 src/Merge.php         merge
 src/Dashlets.php      home dashlets
+src/Quotes.php        quotations: auto-send, discount, resend
+src/Mailer.php        outgoing email and the outbox
 src/...               auth, users, emails, favorites, recently viewed, alerts, search, preferences, target lists
 sql/schema.sql        tables
+sql/migrations/       changes for databases created from an earlier schema.sql
 scripts/seed.php      users and wireframe sample data
 ```
 
@@ -160,4 +197,5 @@ To add a field: add a column in `sql/schema.sql` and an entry in the module's `f
 ## Not included
 
 - Compose email, archive email, note attachments, Documents and "Forgot password?" (these need email sending or file uploads)
+- Real email delivery: quotation emails are saved to the outbox until a transport is added in `src/Mailer.php`
 - Roles and permissions: every logged-in user can view and edit every record

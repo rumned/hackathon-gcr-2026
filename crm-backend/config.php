@@ -4,8 +4,8 @@
 return [
     'db' => [
         'dsn' => 'mysql:host=127.0.0.1;port=3306;dbname=crm;charset=utf8mb4',
-        'user' => 'root',
-        'password' => '',
+        'user' => 'crm',
+        'password' => 'crm_password',
     ],
 
     // Origin of the frontend when it runs on another host or port,
@@ -16,5 +16,14 @@ return [
     'session_name' => 'CRMSESSID',
 
     // true: error responses include the exception message (development only)
-    'debug' => true,
+    'debug' => false,
+
+    // Outgoing email (quotations). 'outbox' only saves emails to the emails table,
+    // shown by GET /api/outbox. To deliver real email, add a transport in src/Mailer.php.
+    // Optional: these are the defaults when the section is missing.
+    'mail' => [
+        'transport' => 'outbox',
+        'from_address' => 'quotes@crmpro.example',
+        'from_name' => 'CRMPro',
+    ],
 ];
