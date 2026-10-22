@@ -79,6 +79,101 @@ final class Quotes
         return ['records' => array_map([self::class, 'get'], $ids)];
     }
 
+    /**
+     * POST /api/accounts/{id}/quotes: creates a quotation for the account and emails it.
+     * Body, one of:
+     *   {"opportunity_id": "..."}                                       one line: the deal's name and amount
+     *   {"items": [{"name": "...", "quantity": 1, "unit_price": 100}]}  the lines typed in
+     * Optional: "discount": {"type": "percent" | "amount", "value": 10, "label": "Autumn promo"},
+     *           "send": false to save it without emailing (default true).
+     */
+    public static function createForAccount(string $accountId, array $body): array
+    {
+        if (!Records::exists('accounts', $accountId)) {
+            throw new HttpError(404, 'Record not found');
+        }
+        $account = Records::get('accounts', $accountId);
+        $send = !array_key_exists('send', $body) || filter_var($body['send'], FILTER_VALIDATE_BOOLEAN);
+        $errors = [];
+        $opportunityId = trim((string) ($body['opportunity_id'] ?? ''));
+        $items = [];
+        $name = '';
+
+        if ($opportunityId !== '') {
+            $opportunity = Records::exists('opportunities', $opportunityId) ? Records::get('opportunities', $opportunityId) : null;
+            if ($opportunity === null || $opportunity['account_id'] !== $accountId) {
+                $errors['opportunity_id'] = 'Choose a deal of this customer';
+            } elseif ($opportunity['amount'] === null || (float) $opportunity['amount'] <= 0) {
+                $errors['opportunity_id'] = 'This deal has no amount';
+            } else {
+                $items[] = ['name' => $opportunity['name'], 'quantity' => 1.0, 'unit_price' => round((float) $opportunity['amount'], 2)];
+                $name = 'Quotation: ' . $opportunity['name'];
+            }
+        } else {
+            $opportunityId = null;
+            $input = $body['items'] ?? null;
+            if (!is_array($input) || $input === []) {
+                $errors['items'] = 'Choose a deal or add at least one item';
+            } else {
+                foreach (array_values($input) as $n => $line) {
+                    $itemName = trim((string) ($line['name'] ?? ''));
+                    $quantity = $line['quantity'] ?? 1;
+                    $price = $line['unit_price'] ?? null;
+                    $row = $n + 1;
+                    if ($itemName === '' || mb_strlen($itemName) > 255) {
+                        $errors["items.$n.name"] = "Item $row: enter a name of at most 255 characters";
+                    }
+                    if (!is_numeric($quantity) || (float) $quantity <= 0) {
+                        $errors["items.$n.quantity"] = "Item $row: quantity must be more than 0";
+                    }
+                    if (!is_numeric($price) || (float) $price < 0) {
+                        $errors["items.$n.unit_price"] = "Item $row: price must be a number of 0 or more";
+                    }
+                    $items[] = ['name' => $itemName, 'quantity' => round((float) $quantity, 2), 'unit_price' => round((float) $price, 2)];
+                }
+                if (!$errors && array_sum(array_map(static fn (array $i): float => $i['quantity'] * $i['unit_price'], $items)) <= 0) {
+                    $errors['items'] = 'The quotation total must be more than 0';
+                }
+                $name = 'Quotation: ' . ($items[0]['name'] ?? '') . (count($items) > 1 ? ' and more' : '');
+            }
+        }
+        $discount = $body['discount'] ?? null;
+        $hasDiscount = is_array($discount) && ($discount['value'] ?? '') !== ''
+            && (!is_numeric($discount['value']) || (float) $discount['value'] != 0);   // blank or 0: no discount
+        if ($hasDiscount && !$errors) {
+            // Same checks as applyDiscount(), done first so an invalid discount saves nothing
+            $subtotal = array_sum(array_map(static fn (array $i): float => round($i['quantity'] * $i['unit_price'], 2), $items));
+            $type = $discount['type'] ?? null;
+            $value = $discount['value'];
+            if (!in_array($type, ['percent', 'amount'], true)) {
+                $errors['discount.type'] = 'Must be percent or amount';
+            } elseif (!is_numeric($value) || (float) $value < 0) {
+                $errors['discount.value'] = 'Must be a number of 0 or more';
+            } elseif ($type === 'percent' && (float) $value > 100) {
+                $errors['discount.value'] = 'A percent discount can be at most 100';
+            } elseif ($type === 'amount' && (float) $value > $subtotal) {
+                $errors['discount.value'] = 'The discount can be at most the subtotal';
+            }
+            if (mb_strlen(trim((string) ($discount['label'] ?? ''))) > 100) {
+                $errors['discount.label'] = 'Must be at most 100 characters';
+            }
+        }
+        if ($errors) {
+            throw new HttpError(422, 'Validation failed', ['errors' => $errors]);
+        }
+
+        $id = Db::transaction(static function () use ($accountId, $opportunityId, $name, $items, $account, $hasDiscount, $discount): string {
+            $id = self::insert($accountId, $opportunityId, $name, $items, $account['assigned_user_id'] ?? null);
+            if ($hasDiscount) {
+                self::applyDiscount($id, ['type' => $discount['type'] ?? null, 'value' => $discount['value'], 'label' => $discount['label'] ?? '', 'send' => false]);
+            }
+
+            return $id;
+        });
+
+        return $send ? self::send($id) : self::get($id);
+    }
+
     /** GET /api/quotes/{id} */
     public static function get(string $id): array
     {
@@ -240,38 +335,60 @@ final class Quotes
 
     private static function createFromOpportunity(array $opportunity): string
     {
+        $amount = round((float) $opportunity['amount'], 2);
+
+        return self::insert(
+            (string) $opportunity['account_id'],
+            $opportunity['id'],
+            'Quotation: ' . $opportunity['name'],
+            [['name' => $opportunity['name'], 'quantity' => 1.0, 'unit_price' => $amount]],
+            $opportunity['assigned_user_id'] ?? null,
+        );
+    }
+
+    /** Saves a quotation and its line items (status Draft). $items: [['name', 'quantity', 'unit_price'], ...]. */
+    private static function insert(string $accountId, ?string $opportunityId, string $name, array $items, ?string $assignedUserId): string
+    {
         $id = Util::uuid();
         $now = Util::now();
         $userId = Auth::userId();
-        $amount = round((float) $opportunity['amount'], 2);
+        $subtotal = 0.0;
+        foreach ($items as &$item) {
+            $item['total'] = round($item['quantity'] * $item['unit_price'], 2);
+            $subtotal += $item['total'];
+        }
+        unset($item);
+        $subtotal = round($subtotal, 2);
 
-        Db::transaction(static function () use ($id, $now, $userId, $amount, $opportunity): void {
+        Db::transaction(static function () use ($id, $now, $userId, $accountId, $opportunityId, $name, $items, $assignedUserId, $subtotal): void {
             Db::insert('quotes', [
                 'id' => $id,
-                'name' => mb_substr('Quotation: ' . $opportunity['name'], 0, 255),
+                'name' => mb_substr($name, 0, 255),
                 'date_entered' => $now,
                 'date_modified' => $now,
                 'created_by' => $userId,
                 'modified_user_id' => $userId,
                 'deleted' => 0,
-                'assigned_user_id' => $opportunity['assigned_user_id'] ?? $userId,
-                'account_id' => $opportunity['account_id'],
-                'opportunity_id' => $opportunity['id'],
+                'assigned_user_id' => $assignedUserId ?? $userId,
+                'account_id' => $accountId,
+                'opportunity_id' => $opportunityId,
                 'status' => 'Draft',
-                'subtotal' => $amount,
+                'subtotal' => $subtotal,
                 'discount_amount' => 0,
-                'total' => $amount,
+                'total' => $subtotal,
                 'valid_until' => gmdate('Y-m-d', strtotime('+' . self::VALID_DAYS . ' days')),
             ]);
-            Db::insert('quote_items', [
-                'id' => Util::uuid(),
-                'quote_id' => $id,
-                'position' => 1,
-                'name' => $opportunity['name'],
-                'quantity' => 1,
-                'unit_price' => $amount,
-                'total' => $amount,
-            ]);
+            foreach (array_values($items) as $position => $item) {
+                Db::insert('quote_items', [
+                    'id' => Util::uuid(),
+                    'quote_id' => $id,
+                    'position' => $position + 1,
+                    'name' => mb_substr($item['name'], 0, 255),
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total' => $item['total'],
+                ]);
+            }
         });
 
         return $id;

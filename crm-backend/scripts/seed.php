@@ -101,13 +101,14 @@ Records::update('accounts', $accounts['Acme Logistics'], [
 foreach ([
     'Acme Logistics' => ['account_type' => 'Enterprise', 'customer_stage' => 'Existing', 'contact_name' => 'Jane Smith', 'contact_title' => 'Operations manager', 'status' => 'Won', 'lead_source' => 'Web Site', 'tags' => 'Enterprise, High Value'],
     'Northwind Traders' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Laura Chen', 'contact_title' => 'Purchasing lead', 'status' => 'Won', 'lead_source' => 'Existing Customer'],
-    'Bluefin Marine' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Wei Ling Tan', 'contact_title' => 'Partnerships manager'],
-    'Kestrel Foods' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Jonas Weber', 'contact_title' => 'Head of logistics', 'status' => 'Contacted', 'lead_source' => 'Cold Call'],
-    'Granite Systems' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Maria Lopez', 'contact_title' => 'IT director', 'status' => 'Qualified', 'lead_source' => 'Trade Show'],
+    'Bluefin Marine' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Wei Ling Tan', 'contact_title' => 'Partnerships manager', 'status' => 'Won'],
+    'Kestrel Foods' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Jonas Weber', 'contact_title' => 'Head of logistics', 'status' => 'Follow-up', 'lead_source' => 'Cold Call'],
+    'Granite Systems' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Maria Lopez', 'contact_title' => 'IT director', 'status' => 'Test Drive', 'lead_source' => 'Trade Show'],
     'Orchid Health' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'status' => 'Won', 'lead_source' => 'Partner'],
-    'Pioneer Print' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Tom Hughes'],
+    'Pioneer Print' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Tom Hughes', 'status' => 'Won'],
     'Summit Outdoor' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'status' => 'Won'],
-    'Tidewater Energy' => ['account_type' => 'Enterprise', 'customer_stage' => 'Lead'],
+    'Tidewater Energy' => ['account_type' => 'Enterprise', 'customer_stage' => 'Lead', 'status' => 'Lead'],
+    'Willow Interiors' => ['status' => 'Lead'],
     'Daniel Reyes' => ['account_type' => 'Individual', 'customer_stage' => 'Existing', 'phone_mobile' => '+60 12 000 0011', 'status' => 'Won', 'lead_source' => 'Web Site'],
 ] as $name => $fields) {
     Records::update('accounts', $accounts[$name], $fields);

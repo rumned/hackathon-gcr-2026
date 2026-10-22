@@ -20,6 +20,7 @@ Table and column names follow SuiteCRM 7: UUID ids, a `deleted` flag for soft de
    ```
    mysql -u root -p crm < sql/migrations/001_customer_fields_quotes_outbox.sql
    mysql -u root -p crm < sql/migrations/002_customer_kind_and_stage.sql
+   mysql -u root -p crm < sql/migrations/003_sales_status_pipeline.sql
    ```
 2. Copy `config.example.php` to `config.php` and fill in the database details.
 3. Add the users and the sample data shown in the wireframe:
@@ -155,7 +156,7 @@ Email addresses are sent as a list, and the primary one is listed first in respo
 
 "Copy address from billing" is handled in the frontend: copy the `billing_address_*` values into `shipping_address_*` before saving.
 
-Accounts also have these customer fields, used by the CRMPro frontend: `contact_name`, `contact_title`, `phone_mobile`, `status` (New, Contacted, Qualified, Proposal, Won), `lead_source` and `tags` (comma-separated).
+Accounts also have these customer fields, used by the CRMPro frontend: `contact_name`, `contact_title`, `phone_mobile`, `status` (sales status, in pipeline order: Lead, Follow-up, Test Drive, Quotation, Follow-up 2, Won), `lead_source` and `tags` (comma-separated). Account records also include a read-only `last_contacted`: the date of the latest held call or meeting, or email, linked to the account (`null` if there is none).
 
 ### Quotations and outbox
 
@@ -166,6 +167,7 @@ If the opportunity has no account or no amount, no quotation is created. If the 
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/accounts/{id}/quotes` | The account's quotations, newest first, with `items` and the `emails` sent for each |
+| POST | `/api/accounts/{id}/quotes` | Create a quotation for the account and email it. Either `{"opportunity_id": "..."}` (one line: the deal's name and amount; the deal must belong to the account and have an amount) or `{"items": [{"name": "...", "quantity": 1, "unit_price": 100}]}`. Optional `"discount": {"type": "percent" \| "amount", "value": 10, "label": "..."}` and `"send": false` to save it without emailing. Returns 201 with the quotation |
 | GET | `/api/quotes/{id}` | One quotation. `status` is `Draft`, `Sent` or `Not sent` (see `send_error`) |
 | POST | `/api/quotes/{id}/discount` | `{"type": "percent" \| "amount", "value": 10, "label": "Autumn promo", "send": true}`. A value of 0 removes the discount. `send` (default true) emails the updated quotation |
 | POST | `/api/quotes/{id}/send` | Email the quotation again (`{}`) |

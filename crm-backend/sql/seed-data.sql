@@ -118,13 +118,14 @@ INSERT INTO `alerts` (`id`, `name`, `date_entered`, `date_modified`, `created_by
 -- Customer kind (account_type), stage, contact person, status and tags (same values as scripts/seed.php)
 UPDATE `accounts` SET `account_type` = 'Enterprise', `customer_stage` = 'Existing', `contact_name` = 'Jane Smith', `contact_title` = 'Operations manager', `status` = 'Won', `lead_source` = 'Web Site', `tags` = 'Enterprise, High Value' WHERE `id` = '341c1d01-0271-4b1e-badb-33503474b289';
 UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `contact_name` = 'Laura Chen', `contact_title` = 'Purchasing lead', `status` = 'Won', `lead_source` = 'Existing Customer' WHERE `id` = '15ca9e4f-950f-4aee-a326-c695adc0fa45';
-UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `contact_name` = 'Wei Ling Tan', `contact_title` = 'Partnerships manager' WHERE `id` = '0fd6071e-2bdd-499d-bb95-f3233dc3ce05';
-UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Lead', `contact_name` = 'Jonas Weber', `contact_title` = 'Head of logistics', `status` = 'Contacted', `lead_source` = 'Cold Call' WHERE `id` = '15668f11-0087-44df-9c86-32f9ed29b256';
-UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Lead', `contact_name` = 'Maria Lopez', `contact_title` = 'IT director', `status` = 'Qualified', `lead_source` = 'Trade Show' WHERE `id` = 'f98eea0e-cb57-41f9-b685-01357a748ffd';
+UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `contact_name` = 'Wei Ling Tan', `contact_title` = 'Partnerships manager', `status` = 'Won' WHERE `id` = '0fd6071e-2bdd-499d-bb95-f3233dc3ce05';
+UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Lead', `contact_name` = 'Jonas Weber', `contact_title` = 'Head of logistics', `status` = 'Follow-up', `lead_source` = 'Cold Call' WHERE `id` = '15668f11-0087-44df-9c86-32f9ed29b256';
+UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Lead', `contact_name` = 'Maria Lopez', `contact_title` = 'IT director', `status` = 'Test Drive', `lead_source` = 'Trade Show' WHERE `id` = 'f98eea0e-cb57-41f9-b685-01357a748ffd';
 UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `status` = 'Won', `lead_source` = 'Partner' WHERE `id` = '44182a2e-5314-4810-8875-c6ed07392471';
-UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `contact_name` = 'Tom Hughes' WHERE `id` = '07f439d5-4600-4fde-b0fc-9b318c38e79d';
+UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `contact_name` = 'Tom Hughes', `status` = 'Won' WHERE `id` = '07f439d5-4600-4fde-b0fc-9b318c38e79d';
 UPDATE `accounts` SET `account_type` = 'Business', `customer_stage` = 'Existing', `status` = 'Won' WHERE `id` = '2e99f721-0d16-4b0c-8925-27cd1d86e666';
-UPDATE `accounts` SET `account_type` = 'Enterprise', `customer_stage` = 'Lead' WHERE `id` = 'cf2822d9-d8f8-4f09-a9c4-9cd5a3f737a2';
+UPDATE `accounts` SET `account_type` = 'Enterprise', `customer_stage` = 'Lead', `status` = 'Lead' WHERE `id` = 'cf2822d9-d8f8-4f09-a9c4-9cd5a3f737a2';
+UPDATE `accounts` SET `status` = 'Lead' WHERE `id` = 'fd60dbd3-7fbf-4642-82f7-6e7f10218854';
 
 -- Individual (B2C) customer and won deals (purchase history of Northwind Traders and Daniel Reyes)
 -- accounts (1 rows)

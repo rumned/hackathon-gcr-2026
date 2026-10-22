@@ -58,7 +58,7 @@ CREATE TABLE accounts (
   contact_name VARCHAR(150) NULL,
   contact_title VARCHAR(100) NULL,
   phone_mobile VARCHAR(100) NULL,
-  status VARCHAR(100) NULL,
+  status VARCHAR(100) NULL,         -- sales status: Lead, Follow-up, Test Drive, Quotation, Follow-up 2, Won
   lead_source VARCHAR(100) NULL,
   tags VARCHAR(255) NULL,
   customer_stage VARCHAR(50) NULL,   -- Lead or Existing (account_type holds Individual, Business, Enterprise)

@@ -155,8 +155,8 @@ final class Modules
             'Direct Mail', 'Conference', 'Trade Show', 'Web Site', 'Word of mouth', 'Email', 'Campaign', 'Other',
         ]);
         $leadStatuses = self::options(['New', 'Assigned', 'In Process', 'Converted', 'Recycled', 'Dead']);
-        // Customer status used by the CRMPro frontend
-        $customerStatuses = self::options(['New', 'Contacted', 'Qualified', 'Proposal', 'Won']);
+        // Customer sales status used by the CRMPro frontend, in pipeline order (the sales tracker columns)
+        $customerStatuses = self::options(['Lead', 'Follow-up', 'Test Drive', 'Quotation', 'Follow-up 2', 'Won']);
         $salesStages = self::options([
             'Prospecting', 'Qualification', 'Needs Analysis', 'Value Proposition', 'Id. Decision Makers',
             'Perception Analysis', 'Proposal/Price Quote', 'Negotiation/Review', 'Closed Won', 'Closed Lost',

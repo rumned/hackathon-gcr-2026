@@ -395,6 +395,7 @@ final class Records
             }
         }
         $emails = !empty($module['emails']) ? Emails::forRecords($module['label'], $ids) : [];
+        $lastContacted = $module['table'] === 'accounts' ? self::lastContacted($ids) : [];
 
         $records = [];
         foreach ($rows as $row) {
@@ -429,6 +430,9 @@ final class Records
                 $record['email1'] = $list[0]['email_address'] ?? null;   // primary address is listed first
                 $record['email_addresses'] = $list;
             }
+            if ($module['table'] === 'accounts') {
+                $record['last_contacted'] = $lastContacted[$row['id']] ?? null;
+            }
             $record['date_entered'] = $row['date_entered'];
             $record['created_by'] = $row['created_by'];
             $record['created_by_name'] = $userNames[$row['created_by'] ?? ''] ?? null;
@@ -439,6 +443,25 @@ final class Records
         }
 
         return $records;
+    }
+
+    /**
+     * Last contact with each account: the latest held call or meeting, or quotation email,
+     * linked to the account (parent_type Accounts). Account id => datetime; accounts with none are left out.
+     */
+    private static function lastContacted(array $ids): array
+    {
+        $marks = Db::marks($ids);
+        $rows = Db::all(
+            "SELECT parent_id, MAX(d) AS last FROM ("
+            . " SELECT parent_id, date_start AS d FROM calls WHERE deleted = 0 AND status = 'Held' AND parent_type = 'Accounts' AND parent_id IN ($marks)"
+            . " UNION ALL SELECT parent_id, date_start FROM meetings WHERE deleted = 0 AND status = 'Held' AND parent_type = 'Accounts' AND parent_id IN ($marks)"
+            . " UNION ALL SELECT parent_id, date_sent FROM emails WHERE deleted = 0 AND parent_type = 'Accounts' AND parent_id IN ($marks)"
+            . ") x WHERE d IS NOT NULL GROUP BY parent_id",
+            [...$ids, ...$ids, ...$ids],
+        );
+
+        return array_column($rows, 'last', 'parent_id');
     }
 
     private static function where(array $module, array $query, ?array $scope): array

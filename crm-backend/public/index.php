@@ -94,6 +94,8 @@ $router->post('/api/prospect_lists/{id}/records', static fn (Request $request, a
 // Before the generic /api/{module} routes so these paths are not read as module names.
 $router->get('/api/accounts/{id}/quotes', static fn (Request $request, array $p): array => Quotes::forAccount($p['id']));
 
+$router->post('/api/accounts/{id}/quotes', static fn (Request $request, array $p): Response => Response::json(Quotes::createForAccount($p['id'], $request->json()), 201));
+
 $router->get('/api/quotes/{id}', static fn (Request $request, array $p): array => Quotes::get($p['id']));
 
 $router->post('/api/quotes/{id}/discount', static fn (Request $request, array $p): array => Quotes::applyDiscount($p['id'], $request->json()));
