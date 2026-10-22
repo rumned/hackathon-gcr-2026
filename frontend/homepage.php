@@ -1,39 +1,34 @@
 <?php
 require __DIR__ . '/includes/bootstrap.php';
 
-// Mock data for calls table (from the original HomePage)
-$calls = [
-    ["subject" => "Get more information on the proposed deal", "related" => "A.G. Parr PLC", "date" => "2026-11-09 17:30", "accept" => "Accepted", "status" => "Planned"],
-    ["subject" => "Bad time, will call back", "related" => "Draft Diversified Energy Inc", "date" => "2027-02-10 12:00", "accept" => "Accepted", "status" => "Planned"],
-    ["subject" => "Discuss review process", "related" => "Sandeon Consolidation Corp", "date" => "2027-01-26 17:00", "accept" => "Accepted", "status" => "Planned"],
-    ["subject" => "Get more information on the proposed deal", "related" => "Kings Royalty Trust", "date" => "2027-06-27 14:15", "accept" => "Accepted", "status" => "Planned"],
-    ["subject" => "Get more information on the proposed deal", "related" => "Constrata Trust LLC", "date" => "2027-08-25 17:45", "accept" => "Accepted", "status" => "Planned"]
-];
+// Dashlet data for the logged-in user, from the backend
+$calls         = api_get('/api/dashlets/my-calls');
+$meetings      = api_get('/api/dashlets/my-meetings');
+$opportunities = api_get('/api/dashlets/my-open-opportunities');
+$pipeline      = api_get('/api/dashlets/pipeline-by-sales-stage');
+$myCustomers   = api_get('/api/dashlets/my-accounts');
+$leads         = api_get('/api/dashlets/my-leads');
 
-// Mock data for the wireframe's dashlets
-$meetings = [
-    ['Quarterly review', '2026-10-27 09:00', 'TechFlow'],
-    ['Product demo', '2026-10-29 15:00', 'CloudSync'],
-];
-$opportunities = [
-    ['Acme CRM rollout', 'Acme Corp', 'Proposal', 24000],
-    ['Marketing automation add-on', 'Acme Corp', 'Qualified', 8500],
-    ['Q4 renewal', 'NextGen', 'Negotiation', 24000],
-    ['Fleet tracking', 'DataHub', 'Proposal', 11500],
-];
-$leads = [
-    ['Tom Becker', 'New', 'Website'],
-    ['Aisha Rahman', 'Assigned', 'Trade show'],
-];
+$stages = array_values(array_filter($pipeline['stages'], fn ($s) => $s['count'] > 0));
+$maxStage = $stages ? max(array_column($stages, 'amount')) : 0;
 
-// Pipeline totals by sales stage
-$stages = ['Qualified' => 0, 'Proposal' => 0, 'Negotiation' => 0];
-foreach ($opportunities as $o) {
-    $stages[$o[2]] += $o[3];
+/** "(1 - 5 of 7)" */
+function range_text(array $page): string
+{
+    $first = $page['total'] ? ($page['page'] - 1) * $page['per_page'] + 1 : 0;
+    return '(' . $first . ' - ' . ($first ? $first + count($page['records']) - 1 : 0) . ' of ' . $page['total'] . ')';
 }
-$maxStage = max($stages);
 
-$myCustomers = array_slice(array_values(array_filter(customers(), fn($c) => $c['assigned'] === 'Alex Carter')), 0, 3);
+/** Link to the related record when it is a customer. */
+function related_link(array $row): string
+{
+    if (($row['parent_name'] ?? null) === null) {
+        return '';
+    }
+    return ($row['parent_type'] ?? '') === 'Accounts'
+        ? '<a href="detail.php?id=' . e($row['parent_id']) . '">' . e($row['parent_name']) . '</a>'
+        : e($row['parent_name']);
+}
 
 $pageTitle = 'Dashboard';
 $activeModule = 'home';
@@ -81,34 +76,35 @@ require __DIR__ . '/includes/layout-top.php';
             <th>Subject <svg class="icon icon--xs"><use href="#i-sort"/></svg></th>
             <th>Related to</th>
             <th>Start date <svg class="icon icon--xs"><use href="#i-sort"/></svg></th>
-            <th>Accept?</th>
             <th>Status <svg class="icon icon--xs"><use href="#i-sort"/></svg></th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($calls as $call): ?>
+          <?php foreach ($calls['records'] as $call): ?>
           <tr>
             <td><button class="row-close" type="button" aria-label="Close call"><svg class="icon"><use href="#i-x"/></svg></button></td>
-            <td><a href="#"><?= e($call['subject']) ?></a></td>
-            <td><a href="#"><?= e($call['related']) ?></a></td>
-            <td><?= e($call['date']) ?></td>
-            <td><?= e($call['accept']) ?></td>
+            <td><?= e($call['name']) ?></td>
+            <td><?= related_link($call) ?></td>
+            <td><?= e(fmt_datetime($call['date_start'])) ?></td>
             <td><?= e($call['status']) ?></td>
           </tr>
           <?php endforeach; ?>
+          <?php if (!$calls['records']): ?>
+            <tr><td colspan="5">No planned calls.</td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
     <footer class="dashlet__foot">
       <button class="mini-btn" type="button" aria-label="First page"><svg class="icon"><use href="#i-first"/></svg></button>
       <button class="mini-btn" type="button" aria-label="Previous page"><svg class="icon"><use href="#i-back"/></svg></button>
-      <span>(1 - 5 of 7)</span>
+      <span><?= e(range_text($calls)) ?></span>
       <button class="mini-btn" type="button" aria-label="Next page"><svg class="icon"><use href="#i-next"/></svg></button>
       <button class="mini-btn" type="button" aria-label="Last page"><svg class="icon"><use href="#i-last"/></svg></button>
     </footer>
   </article>
 
-  <!-- My activity stream (original HomePage) -->
+  <!-- My activity stream (original HomePage; sample content, the backend has no activity stream) -->
   <article class="dashlet">
     <header class="dashlet__head">
       <h2 class="dashlet__title"><svg class="icon icon--sm"><use href="#i-bell"/></svg> My activity stream</h2>
@@ -162,9 +158,12 @@ require __DIR__ . '/includes/layout-top.php';
       <table class="table table--dashlet">
         <thead><tr><th>Subject</th><th>Start date</th><th>Related to</th></tr></thead>
         <tbody>
-          <?php foreach ($meetings as $m): ?>
-            <tr><td><?= e($m[0]) ?></td><td><?= e($m[1]) ?></td><td><?= e($m[2]) ?></td></tr>
+          <?php foreach ($meetings['records'] as $m): ?>
+            <tr><td><?= e($m['name']) ?></td><td><?= e(fmt_datetime($m['date_start'])) ?></td><td><?= related_link($m) ?></td></tr>
           <?php endforeach; ?>
+          <?php if (!$meetings['records']): ?>
+            <tr><td colspan="3">No planned meetings.</td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -182,11 +181,19 @@ require __DIR__ . '/includes/layout-top.php';
     </header>
     <div class="dashlet__body">
       <table class="table table--dashlet">
-        <thead><tr><th>Name</th><th>Company</th><th>Sales stage</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Name</th><th>Customer</th><th>Sales stage</th><th>Amount</th></tr></thead>
         <tbody>
-          <?php foreach ($opportunities as $o): ?>
-            <tr><td><?= e($o[0]) ?></td><td><?= e($o[1]) ?></td><td><?= e($o[2]) ?></td><td>$<?= number_format($o[3]) ?></td></tr>
+          <?php foreach ($opportunities['records'] as $o): ?>
+            <tr>
+              <td><?= e($o['name']) ?></td>
+              <td><?php if ($o['account_id']): ?><a href="detail.php?id=<?= e($o['account_id']) ?>"><?= e($o['account_name']) ?></a><?php endif; ?></td>
+              <td><?= e($o['sales_stage']) ?></td>
+              <td><?= e(money($o['amount'])) ?></td>
+            </tr>
           <?php endforeach; ?>
+          <?php if (!$opportunities['records']): ?>
+            <tr><td colspan="4">No open opportunities.</td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -203,15 +210,19 @@ require __DIR__ . '/includes/layout-top.php';
       </div>
     </header>
     <div class="dashlet__body dashlet__body--padded">
-      <ul class="bars">
-        <?php foreach ($stages as $stage => $amount): ?>
-          <li class="bar">
-            <span><?= e($stage) ?></span>
-            <span class="bar__track"><span class="bar__fill" style="--pct: <?= round($amount / $maxStage * 100) ?>%"></span></span>
-            <span class="bar__value">$<?= number_format($amount) ?></span>
-          </li>
-        <?php endforeach; ?>
-      </ul>
+      <?php if ($stages): ?>
+        <ul class="bars">
+          <?php foreach ($stages as $stage): ?>
+            <li class="bar">
+              <span><?= e($stage['label']) ?></span>
+              <span class="bar__track"><span class="bar__fill" style="--pct: <?= $maxStage > 0 ? round($stage['amount'] / $maxStage * 100) : 0 ?>%"></span></span>
+              <span class="bar__value"><?= e(money($stage['amount'])) ?></span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php else: ?>
+        <p class="empty">No open opportunities.</p>
+      <?php endif; ?>
     </div>
   </article>
 
@@ -227,16 +238,19 @@ require __DIR__ . '/includes/layout-top.php';
     </header>
     <div class="dashlet__body">
       <table class="table table--dashlet">
-        <thead><tr><th>Name</th><th>Company</th><th>City</th><th>Phone</th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>City</th><th>Phone</th></tr></thead>
         <tbody>
-          <?php foreach ($myCustomers as $c): ?>
+          <?php foreach ($myCustomers['records'] as $c): ?>
             <tr>
-              <td><a href="detail.php?id=<?= (int)$c['id'] ?>"><?= e($c['name']) ?></a></td>
-              <td><?= e($c['company']) ?></td>
-              <td><?= e($c['billing_city']) ?></td>
-              <td><?= e($c['phone']) ?></td>
+              <td><a href="detail.php?id=<?= e($c['id']) ?>"><?= e($c['name']) ?></a></td>
+              <td><?= e($c['account_type']) ?></td>
+              <td><?= e($c['billing_address_city']) ?></td>
+              <td><?= e($c['phone_office']) ?></td>
             </tr>
           <?php endforeach; ?>
+          <?php if (!$myCustomers['records']): ?>
+            <tr><td colspan="4">No customers assigned to you.</td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -256,9 +270,12 @@ require __DIR__ . '/includes/layout-top.php';
       <table class="table table--dashlet">
         <thead><tr><th>Name</th><th>Status</th><th>Lead source</th></tr></thead>
         <tbody>
-          <?php foreach ($leads as $l): ?>
-            <tr><td><?= e($l[0]) ?></td><td><?= e($l[1]) ?></td><td><?= e($l[2]) ?></td></tr>
+          <?php foreach ($leads['records'] as $l): ?>
+            <tr><td><?= e($l['name']) ?></td><td><?= e($l['status']) ?></td><td><?= e($l['lead_source']) ?></td></tr>
           <?php endforeach; ?>
+          <?php if (!$leads['records']): ?>
+            <tr><td colspan="3">No leads assigned to you.</td></tr>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>

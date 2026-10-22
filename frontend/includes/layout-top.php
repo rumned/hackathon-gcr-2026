@@ -1,7 +1,10 @@
 <?php
-// Expects $pageTitle and $activeModule ('home' or 'customers') to be set by the page.
-$recent    = array_slice(customers(), 0, 5);
-$favorites = array_filter([find_customer(1), find_customer(5)]);
+// Expects $pageTitle and $activeModule ('home', 'customers' or 'outbox') to be set by the page.
+$recent    = api_get('/api/recently-viewed', ['module' => 'accounts', 'limit' => 5])['records'] ?? [];
+$favorites = api_get('/api/favorites', ['module' => 'accounts'])['records'] ?? [];
+$alerts    = api_get('/api/alerts', ['limit' => 1]);
+$unread    = (int) ($alerts['unread_count'] ?? 0);
+$flash     = take_flash();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,7 +33,7 @@ $favorites = array_filter([find_customer(1), find_customer(5)]);
         <a href="#" class="menu__item">Import customers</a>
         <p class="menu__heading">Recently viewed</p>
         <?php foreach (array_slice($recent, 0, 3) as $r): ?>
-          <a href="detail.php?id=<?= (int)$r['id'] ?>" class="menu__item"><?= e($r['name']) ?></a>
+          <a href="detail.php?id=<?= e($r['id']) ?>" class="menu__item"><?= e($r['name']) ?></a>
         <?php endforeach; ?>
       </div>
     </li>
@@ -52,6 +55,7 @@ $favorites = array_filter([find_customer(1), find_customer(5)]);
         <a href="#" class="menu__item">Notes</a>
         <a href="#" class="menu__item">Documents</a>
         <a href="#" class="menu__item">Campaigns</a>
+        <a href="outbox.php" class="menu__item">Outbox</a>
       </div>
     </li>
   </ul>
@@ -77,17 +81,17 @@ $favorites = array_filter([find_customer(1), find_customer(5)]);
       <input type="search" placeholder="Search customers, companies, or deals..." aria-label="Global search">
     </label>
 
-    <button class="topnav__btn" type="button" aria-label="Alerts, 3 unread">
+    <button class="topnav__btn" type="button" aria-label="Alerts, <?= $unread ?> unread">
       <svg class="icon icon--sm"><use href="#i-bell"/></svg>
-      <span class="topnav__count">3</span>
+      <?php if ($unread > 0): ?><span class="topnav__count"><?= $unread ?></span><?php endif; ?>
     </button>
 
     <div class="menu menu--right">
       <button class="topnav__user" type="button" aria-haspopup="true">
-        <span class="avatar avatar--sm">AC</span>
+        <span class="avatar avatar--sm"><?= e(initials(user_display_name($currentUser))) ?></span>
         <span class="topnav__user-info">
-          <span class="topnav__user-name">Alex Carter</span>
-          <span class="topnav__user-role">Sales Manager</span>
+          <span class="topnav__user-name"><?= e(user_display_name($currentUser)) ?></span>
+          <span class="topnav__user-role"><?= e($currentUser['title'] ?? $currentUser['user_name']) ?></span>
         </span>
         <svg class="icon icon--sm"><use href="#i-chev"/></svg>
       </button>
@@ -118,7 +122,7 @@ $favorites = array_filter([find_customer(1), find_customer(5)]);
       <h2 class="sidebar__title">Recently viewed</h2>
       <ul class="sidebar__list">
         <?php foreach ($recent as $r): ?>
-          <li><a href="detail.php?id=<?= (int)$r['id'] ?>" class="sidebar__link"><?= e($r['name']) ?></a></li>
+          <li><a href="detail.php?id=<?= e($r['id']) ?>" class="sidebar__link"><?= e($r['name']) ?></a></li>
         <?php endforeach; ?>
       </ul>
     </section>
@@ -126,10 +130,13 @@ $favorites = array_filter([find_customer(1), find_customer(5)]);
       <h2 class="sidebar__title">Favorites</h2>
       <ul class="sidebar__list">
         <?php foreach ($favorites as $f): ?>
-          <li><a href="detail.php?id=<?= (int)$f['id'] ?>" class="sidebar__link"><?= e($f['name']) ?></a></li>
+          <li><a href="detail.php?id=<?= e($f['id']) ?>" class="sidebar__link"><?= e($f['name']) ?></a></li>
         <?php endforeach; ?>
       </ul>
     </section>
   </aside>
 
   <main class="main">
+<?php if ($flash): ?>
+    <p class="flash flash--<?= e($flash['type']) ?>" role="status"><?= e($flash['message']) ?></p>
+<?php endif; ?>

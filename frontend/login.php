@@ -1,4 +1,37 @@
+<?php
+require __DIR__ . '/includes/api.php';
 
+$error = '';
+$userName = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $userName = trim($_POST['user_name'] ?? '');
+    $response = api_request('POST', '/api/auth/login', [
+        'user_name' => $userName,
+        'password' => (string) ($_POST['password'] ?? ''),
+    ]);
+    if ($response['status'] === 200) {
+        $_SESSION['user'] = $response['data'];
+        session_regenerate_id(true);
+        header('Location: homepage.php');
+        exit;
+    }
+    api_forget_login();
+    $error = $response['status'] === 0
+        ? "Can't reach the CRM backend at " . API_URL . '. Check that it is running.'
+        : (string) ($response['data']['error'] ?? 'Login failed.');
+} elseif (api_logged_in()) {
+    header('Location: homepage.php');
+    exit;
+} elseif (isset($_GET['expired'])) {
+    $error = 'Your session has ended. Log in again.';
+}
+
+function e($value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,15 +62,20 @@
             <p>Enter your details below to continue.</p>
         </div>
 
-        <form action="homepage.php" method="post">
+        <?php if ($error !== ''): ?>
+            <p class="form-error" role="alert"><?= e($error) ?></p>
+        <?php endif; ?>
+
+        <form action="login.php" method="post">
             <div class="form-group">
-                <label for="email">Email Address</label>
+                <label for="user_name">Username</label>
                 <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="name@example.com"
-                    autocomplete="email"
+                    type="text"
+                    id="user_name"
+                    name="user_name"
+                    placeholder="admin"
+                    value="<?= e($userName) ?>"
+                    autocomplete="username"
                     required
                 >
             </div>

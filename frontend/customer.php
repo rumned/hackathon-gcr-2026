@@ -1,89 +1,90 @@
 <?php
 require __DIR__ . '/includes/bootstrap.php';
 
+$meta = api_get('/api/meta/accounts');
+$statusOptions = $meta['fields']['status']['options'];
+$typeOptions = $meta['fields']['account_type']['options'];
+$statuses = array_column($statusOptions, 'value');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'add') {
         $name = trim($_POST['name'] ?? '');
-        $company = trim($_POST['company'] ?? '');
+        $contact = trim($_POST['contact_name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $status = $_POST['status'] ?? 'New';
 
-        if (
-            $name !== '' &&
-            $company !== '' &&
-            $phone !== '' &&
-            filter_var($email, FILTER_VALIDATE_EMAIL) &&
-            in_array($status, $statuses, true)
-        ) {
-            $ids = array_column($_SESSION['customers'], 'id');
-            $nextId = empty($ids) ? 1 : max($ids) + 1;
-
-            $_SESSION['customers'][] = [
-                'id' => $nextId,
+        if ($name === '' || $contact === '' || $email === '' || $phone === '') {
+            flash('error', 'Customer not added: fill in every field.');
+        } else {
+            $result = api_send('POST', '/api/accounts', [
                 'name' => $name,
-                'company' => $company,
-                'email' => $email,
-                'phone' => $phone,
+                'contact_name' => $contact,
+                'email_addresses' => [$email],
+                'phone_office' => $phone,
                 'status' => $status,
-                'created' => date('Y-m-d'),
-                'modified' => date('Y-m-d'),
-            ] + blank_customer();
+            ]);
+            if ($result['ok']) {
+                flash('success', "Customer {$name} added.");
+            } else {
+                flash('error', 'Customer not added: ' . ($result['errors'] ? implode(' ', array_map(
+                    fn ($field, $message) => (str_starts_with($field, 'email') ? 'Email' : $field) . ': ' . $message . '.',
+                    array_keys($result['errors']),
+                    $result['errors'],
+                )) : $result['message']));
+            }
         }
     }
 
     if ($action === 'delete') {
-        $id = (int)($_POST['id'] ?? 0);
-
-        $_SESSION['customers'] = array_values(array_filter(
-            $_SESSION['customers'],
-            fn($c) => $c['id'] !== $id
-        ));
+        $result = api_send('DELETE', '/api/accounts/' . rawurlencode((string) ($_POST['id'] ?? '')));
+        flash($result['ok'] ? 'success' : 'error', $result['ok'] ? 'Customer deleted.' : 'Customer not deleted: ' . $result['message']);
     }
 
-    header('Location: customer.php');
-    exit;
+    redirect('customer.php');
 }
 
-$customers = customers();
 $tabStatuses = array_merge(['All'], $statuses);
 
 $search = trim($_GET['search'] ?? '');
 $statusFilter = $_GET['status'] ?? 'All';
-$companyFilter = $_GET['company'] ?? 'All';
+$typeFilter = $_GET['type'] ?? 'All';
 
 if (!in_array($statusFilter, $tabStatuses, true)) {
     $statusFilter = 'All';
 }
 
-$companies = array_unique(array_column($customers, 'company'));
-sort($companies);
+// Search and type filter apply to every status tab; the tab adds the status filter
+$baseQuery = ['q' => $search];
+if ($typeFilter !== 'All') {
+    $baseQuery['filter']['account_type'] = $typeFilter;
+}
 
-$filtered = array_values(array_filter($customers, function($c) use (
-    $search, $statusFilter, $companyFilter
-) {
-    $matchesSearch =
-        $search === '' ||
-        stripos($c['name'], $search) !== false ||
-        stripos($c['company'], $search) !== false ||
-        stripos($c['email'], $search) !== false;
-
-    $matchesStatus =
-        $statusFilter === 'All' || $c['status'] === $statusFilter;
-
-    $matchesCompany =
-        $companyFilter === 'All' || $c['company'] === $companyFilter;
-
-    return $matchesSearch && $matchesStatus && $matchesCompany;
-}));
+$counts = [];
+foreach ($tabStatuses as $s) {
+    $query = $baseQuery + ['per_page' => 1];
+    if ($s !== 'All') {
+        $query['filter']['status'] = $s;
+    }
+    $counts[$s] = api_get('/api/accounts', $query)['total'];
+}
 
 $pageSize = 5;
-$totalPages = max(1, (int)ceil(count($filtered) / $pageSize));
-$page = max(1, min((int)($_GET['page'] ?? 1), $totalPages));
-$visible = array_slice($filtered, ($page - 1) * $pageSize, $pageSize);
-$firstShown = count($filtered) ? ($page - 1) * $pageSize + 1 : 0;
+$listQuery = $baseQuery + ['per_page' => $pageSize, 'page' => max(1, (int) ($_GET['page'] ?? 1))];
+if ($statusFilter !== 'All') {
+    $listQuery['filter']['status'] = $statusFilter;
+}
+$list = api_get('/api/accounts', $listQuery);
+$totalPages = max(1, (int) ceil($list['total'] / $pageSize));
+if ($list['page'] > $totalPages) {
+    $listQuery['page'] = $totalPages;
+    $list = api_get('/api/accounts', $listQuery);
+}
+$page = $list['page'];
+$visible = $list['records'];
+$firstShown = $list['total'] ? ($page - 1) * $pageSize + 1 : 0;
 $lastShown = ($page - 1) * $pageSize + count($visible);
 
 // Current filters as URL parameters, without the "open the Add modal" flag
@@ -110,14 +111,9 @@ require __DIR__ . '/includes/layout-top.php';
 
 <div class="status-tabs">
   <?php foreach ($tabStatuses as $s): ?>
-    <?php
-    $count = $s === 'All'
-        ? count($customers)
-        : count(array_filter($customers, fn($c) => $c['status'] === $s));
-    ?>
     <a href="<?= e(listUrl(['status' => $s, 'page' => 1])) ?>"
        class="status-tab<?= $statusFilter === $s ? ' is-selected' : '' ?>">
-      <?= e($s) ?> (<?= $count ?>)
+      <?= e($s) ?> (<?= $counts[$s] ?>)
     </a>
   <?php endforeach; ?>
 </div>
@@ -140,10 +136,10 @@ require __DIR__ . '/includes/layout-top.php';
     <input class="input filters__search" type="text" name="search" placeholder="Search customers..."
            value="<?= e($search) ?>" aria-label="Search customers">
 
-    <select class="input filters__select" name="company" aria-label="Company">
-      <option value="All">All Companies</option>
-      <?php foreach ($companies as $company): ?>
-        <option value="<?= e($company) ?>"<?= $companyFilter === $company ? ' selected' : '' ?>><?= e($company) ?></option>
+    <select class="input filters__select" name="type" aria-label="Type">
+      <option value="All">All Types</option>
+      <?php foreach ($typeOptions as $option): ?>
+        <option value="<?= e($option['value']) ?>"<?= $typeFilter === $option['value'] ? ' selected' : '' ?>><?= e($option['label']) ?></option>
       <?php endforeach; ?>
     </select>
 
@@ -181,7 +177,7 @@ require __DIR__ . '/includes/layout-top.php';
       <span class="mini-btn is-disabled"><svg class="icon"><use href="#i-last"/></svg></span>
     <?php endif; ?>
 
-    <span class="pager__info">(<?= $firstShown ?> - <?= $lastShown ?> of <?= count($filtered) ?>)</span>
+    <span class="pager__info">(<?= $firstShown ?> - <?= $lastShown ?> of <?= $list['total'] ?>)</span>
   </nav>
 </div>
 
@@ -193,7 +189,7 @@ require __DIR__ . '/includes/layout-top.php';
           <th class="table__narrow"><input type="checkbox" aria-label="Select all" data-select-all></th>
           <th class="table__narrow"><span class="visually-hidden">Edit</span></th>
           <th>Name</th>
-          <th>Company</th>
+          <th>Contact</th>
           <th>City</th>
           <th>Billing country</th>
           <th>Email</th>
@@ -210,30 +206,30 @@ require __DIR__ . '/includes/layout-top.php';
           <tr>
             <td><input type="checkbox" aria-label="Select <?= e($c['name']) ?>" data-row-select></td>
             <td>
-              <a class="mini-btn" href="edit.php?id=<?= (int)$c['id'] ?>" aria-label="Edit <?= e($c['name']) ?>">
+              <a class="mini-btn" href="edit.php?id=<?= e($c['id']) ?>" aria-label="Edit <?= e($c['name']) ?>">
                 <svg class="icon"><use href="#i-edit"/></svg>
               </a>
             </td>
             <td>
               <div class="customer-name">
                 <span class="avatar avatar--soft avatar--sm"><?= e(initials($c['name'])) ?></span>
-                <a href="detail.php?id=<?= (int)$c['id'] ?>"><strong><?= e($c['name']) ?></strong></a>
+                <a href="detail.php?id=<?= e($c['id']) ?>"><strong><?= e($c['name']) ?></strong></a>
               </div>
             </td>
-            <td><?= e($c['company']) ?></td>
-            <td><?= e($c['billing_city']) ?></td>
-            <td><?= e($c['billing_country']) ?></td>
-            <td class="email"><?= e($c['email']) ?></td>
-            <td><?= e($c['phone']) ?></td>
-            <td><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span></td>
-            <td><?= e($c['assigned']) ?></td>
-            <td><?= e(fmt_date($c['created'])) ?></td>
+            <td><?= e($c['contact_name']) ?></td>
+            <td><?= e($c['billing_address_city']) ?></td>
+            <td><?= e($c['billing_address_country']) ?></td>
+            <td class="email"><?= e($c['email1']) ?></td>
+            <td><?= e($c['phone_office']) ?></td>
+            <td><?php if ($c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?></td>
+            <td><?= e($c['assigned_user_name']) ?></td>
+            <td><?= e(fmt_date($c['date_entered'])) ?></td>
             <td>
               <div class="row-actions">
-                <a class="btn btn--sm" href="detail.php?id=<?= (int)$c['id'] ?>">View</a>
+                <a class="btn btn--sm" href="detail.php?id=<?= e($c['id']) ?>">View</a>
                 <form method="POST" data-confirm="Delete this customer?">
                   <input type="hidden" name="action" value="delete">
-                  <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+                  <input type="hidden" name="id" value="<?= e($c['id']) ?>">
                   <button class="mini-btn" type="submit" aria-label="Delete <?= e($c['name']) ?>">
                     <svg class="icon"><use href="#i-x"/></svg>
                   </button>
@@ -262,11 +258,11 @@ require __DIR__ . '/includes/layout-top.php';
     <form method="POST">
       <input type="hidden" name="action" value="add">
 
-      <label for="add-name">Full Name</label>
-      <input class="input" id="add-name" type="text" name="name" required>
+      <label for="add-name">Customer name</label>
+      <input class="input" id="add-name" type="text" name="name" maxlength="150" required>
 
-      <label for="add-company">Company</label>
-      <input class="input" id="add-company" type="text" name="company" required>
+      <label for="add-contact">Contact name</label>
+      <input class="input" id="add-contact" type="text" name="contact_name" maxlength="150" required>
 
       <label for="add-email">Email</label>
       <input class="input" id="add-email" type="email" name="email" required>

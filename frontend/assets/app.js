@@ -15,13 +15,13 @@ document.querySelectorAll('[data-tabs]').forEach(function (group) {
   });
 });
 
-// ---------- Confirm before submitting (list view delete) ----------
+// ---------- Confirm before submitting (delete) ----------
 document.addEventListener('submit', function (event) {
   var message = event.target.dataset.confirm;
   if (message && !confirm(message)) event.preventDefault();
 });
 
-// ---------- Add Customer modal (list view) ----------
+// ---------- Modals (Add Customer, Apply discount) ----------
 document.querySelectorAll('[data-open-modal]').forEach(function (button) {
   button.addEventListener('click', function () {
     document.getElementById(button.dataset.openModal).classList.add('show');
@@ -45,48 +45,29 @@ if (selectAll) {
   });
 }
 
-// ---------- Actions menu (detail view) ----------
-document.querySelectorAll('[data-action]').forEach(function (item) {
-  item.addEventListener('click', function () {
-    item.blur(); // closes the menu
-    if (item.dataset.action === 'delete') {
-      if (confirm('Delete this customer?')) {
-        // Later: fetch('/api/contacts/ID', { method: 'DELETE', credentials: 'include' })
-        alert('Delete is not connected to the API yet.');
-      }
-    } else {
-      alert(item.textContent + ' is not connected to the API yet.');
-    }
+// ---------- Task checkboxes (detail view): ticking one saves it ----------
+document.querySelectorAll('[data-autosubmit]').forEach(function (box) {
+  box.addEventListener('change', function () {
+    box.form.submit();
   });
 });
 
-// ---------- Notes (detail view, not saved yet) ----------
-var notes = [];
-function renderNotes() {
-  document.querySelectorAll('.note-list').forEach(function (list) {
-    list.replaceChildren();
-    notes.forEach(function (n) {
-      var li = document.createElement('li');
-      var time = document.createElement('time');
-      var p = document.createElement('p');
-      time.textContent = n.time;
-      p.textContent = n.text;
-      li.append(time, p);
-      list.append(li);
+// ---------- Customer Type (edit view): show only the fields that type uses ----------
+// Rules come from includes/customer-types.php. Hidden groups are disabled, so they are not sent.
+var typeForm = document.querySelector('[data-type-rules]');
+if (typeForm) {
+  var typeRules = JSON.parse(typeForm.dataset.typeRules);
+  var typeSelect = typeForm.querySelector('[data-type-select]');
+  typeSelect.addEventListener('change', function () {
+    var groups = typeRules.types[typeSelect.value];   // undefined: no type, show everything
+    typeForm.querySelectorAll('[data-group]').forEach(function (group) {
+      var name = group.dataset.group;
+      var show = !groups || typeRules.common.indexOf(name) !== -1 || groups.indexOf(name) !== -1;
+      group.hidden = !show;
+      group.disabled = !show;
     });
   });
 }
-document.querySelectorAll('.note-form').forEach(function (form) {
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var input = form.querySelector('input');
-    var text = input.value.trim();
-    if (!text) return;
-    notes.unshift({ text: text, time: new Date().toLocaleString() });
-    input.value = '';
-    renderNotes();
-  });
-});
 
 // ---------- Tags (edit view): press Enter to add, click x to remove ----------
 var tagBox = document.getElementById('tags');
