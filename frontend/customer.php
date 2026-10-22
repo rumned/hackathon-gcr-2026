@@ -235,8 +235,8 @@ require __DIR__ . '/includes/layout-top.php';
                 <a href="detail.php?id=<?= e($c['id']) ?>"><strong><?= e($c['name']) ?></strong></a>
               </div>
             </td>
-            <td><?= e(option_label($typeOptions, $c['account_type'])) ?></td>
-            <td><?= e(option_label($stageOptions, $c['customer_stage'])) ?></td>
+            <td><?php if ($c['account_type'] !== null && $c['account_type'] !== ''): ?><span class="status status-type-<?= e(badge_slug($c['account_type'])) ?>"><?= e(option_label($typeOptions, $c['account_type'])) ?></span><?php endif; ?></td>
+            <td><?php if ($c['customer_stage'] !== null && $c['customer_stage'] !== ''): ?><span class="status status-stage-<?= e(badge_slug($c['customer_stage'])) ?>"><?= e(option_label($stageOptions, $c['customer_stage'])) ?></span><?php endif; ?></td>
             <td><?= e($c['contact_name']) ?></td>
             <td><?= e($c['billing_address_city']) ?></td>
             <td><?= e($c['billing_address_country']) ?></td>

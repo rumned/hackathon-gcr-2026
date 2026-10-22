@@ -8,6 +8,7 @@ $opportunities = api_get('/api/dashlets/my-open-opportunities');
 $pipeline      = api_get('/api/dashlets/pipeline-by-sales-stage');
 $myCustomers   = api_get('/api/dashlets/my-accounts');
 $leads         = api_get('/api/dashlets/my-leads');
+$accountMeta   = api_get('/api/meta/accounts');
 
 $stages = array_values(array_filter($pipeline['stages'], fn ($s) => $s['count'] > 0));
 $maxStage = $stages ? max(array_column($stages, 'amount')) : 0;
@@ -243,7 +244,7 @@ require __DIR__ . '/includes/layout-top.php';
           <?php foreach ($myCustomers['records'] as $c): ?>
             <tr>
               <td><a href="detail.php?id=<?= e($c['id']) ?>"><?= e($c['name']) ?></a></td>
-              <td><?= e($c['account_type']) ?></td>
+              <td><?php if (($c['account_type'] ?? null) !== null && $c['account_type'] !== ''): ?><span class="status status-type-<?= e(badge_slug($c['account_type'])) ?>"><?= e(option_label($accountMeta['fields']['account_type']['options'], $c['account_type'])) ?></span><?php endif; ?></td>
               <td><?= e($c['billing_address_city']) ?></td>
               <td><?= e($c['phone_office']) ?></td>
             </tr>

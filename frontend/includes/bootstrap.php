@@ -132,6 +132,15 @@ function option_label(array $options, ?string $value): string
     return (string) $value;
 }
 
+/** Badge CSS suffix for a stored dropdown value, e.g. "Closed Won" -> "closed-won". */
+function badge_slug(?string $value): string
+{
+    $slug = strtolower((string) $value);
+    $slug = (string) preg_replace('/[^a-z0-9]+/', '-', $slug);
+
+    return trim($slug, '-');
+}
+
 /** Display name of the logged-in user. */
 function user_display_name(array $user): string
 {

@@ -265,8 +265,8 @@ require __DIR__ . '/includes/layout-top.php';
     <div class="profile__info">
       <div class="title-row">
         <h1 class="page-title"><?= e($c['name']) ?></h1>
-        <?php if ($type !== null): ?><span class="status status--type"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?>
-        <?php if ($stage !== null): ?><span class="status status--stage"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?>
+        <?php if ($type !== null): ?><span class="status status-type-<?= e(badge_slug($type)) ?>"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?>
+        <?php if ($stage !== null): ?><span class="status status-stage-<?= e(badge_slug($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?>
         <?php if ($shows('status') && $c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
         <form method="post">
           <input type="hidden" name="action" value="favorite">
@@ -375,8 +375,8 @@ require __DIR__ . '/includes/layout-top.php';
     <!-- Overview: common details plus the ones this customer's Type and Stage use -->
     <dl class="fields" role="tabpanel" data-tabpanel="overview"<?= $panel('overview') ?>>
       <div class="fields__item"><dt class="fields__label">Name</dt><dd class="fields__value"><?= e($c['name']) ?></dd></div>
-      <div class="fields__item"><dt class="fields__label">Type</dt><dd class="fields__value"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></dd></div>
-      <div class="fields__item"><dt class="fields__label">Stage</dt><dd class="fields__value"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></dd></div>
+      <div class="fields__item"><dt class="fields__label">Type</dt><dd class="fields__value"><?php if ($type !== null && $type !== ''): ?><span class="status status-type-<?= e(badge_slug($type)) ?>"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?></dd></div>
+      <div class="fields__item"><dt class="fields__label">Stage</dt><dd class="fields__value"><?php if ($stage !== null && $stage !== ''): ?><span class="status status-stage-<?= e(badge_slug($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?></dd></div>
       <?php if ($shows('contact_person')): ?>
         <div class="fields__item"><dt class="fields__label">Contact name</dt><dd class="fields__value"><?= e($c['contact_name']) ?></dd></div>
         <div class="fields__item"><dt class="fields__label">Job title</dt><dd class="fields__value"><?= e($c['contact_title']) ?></dd></div>
