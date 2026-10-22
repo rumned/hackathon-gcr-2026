@@ -11,9 +11,11 @@ use App\Favorites;
 use App\Http\HttpError;
 use App\Http\Request;
 use App\Http\Response;
+use App\Mailer;
 use App\Merge;
 use App\Modules;
 use App\Preferences;
+use App\Quotes;
 use App\Records;
 use App\Router;
 use App\Search;
@@ -87,6 +89,20 @@ $router->get('/api/meta/{module}', static fn (Request $request, array $p): array
 $router->get('/api/prospect_lists/{id}/records', static fn (Request $request, array $p): array => TargetLists::members($p['id']));
 
 $router->post('/api/prospect_lists/{id}/records', static fn (Request $request, array $p): array => TargetLists::add($p['id'], $request->json()));
+
+// ---------------------------------------------------------------- Quotations and outbox
+// Before the generic /api/{module} routes so these paths are not read as module names.
+$router->get('/api/accounts/{id}/quotes', static fn (Request $request, array $p): array => Quotes::forAccount($p['id']));
+
+$router->get('/api/quotes/{id}', static fn (Request $request, array $p): array => Quotes::get($p['id']));
+
+$router->post('/api/quotes/{id}/discount', static fn (Request $request, array $p): array => Quotes::applyDiscount($p['id'], $request->json()));
+
+$router->post('/api/quotes/{id}/send', static fn (Request $request, array $p): array => Quotes::send($p['id']));
+
+$router->get('/api/outbox', static fn (Request $request): array => Mailer::list($request->query));
+
+$router->get('/api/outbox/{id}', static fn (Request $request, array $p): array => Mailer::get($p['id']));
 
 // ---------------------------------------------------------------- List view (any module)
 $router->get('/api/{module}', static fn (Request $request, array $p): array => Records::list($p['module'], $request->query));

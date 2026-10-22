@@ -54,6 +54,7 @@ $setDates = static function (string $table, string $id, string $entered, ?string
 
 // ------------------------------------------------------------ accounts (list view rows)
 $accounts = [];
+$createdDates = [];
 foreach ([
     ['Acme Logistics', 'London', 'United Kingdom', '+44 20 0000 0001', 'admin', 'info@acme.example', '2026-10-14'],
     ['Northwind Traders', 'Seattle', 'United States', '+1 206 000 0002', 'sally', 'sales@northwind.example', '2026-10-12'],
@@ -75,6 +76,7 @@ foreach ([
         'email_addresses' => [$email],
     ]);
     $accounts[$name] = $record['id'];
+    $createdDates[$name] = "$created 09:00:00";
     $setDates('accounts', $record['id'], "$created 09:00:00");
 }
 
@@ -93,6 +95,22 @@ Records::update('accounts', $accounts['Acme Logistics'], [
     'annual_revenue' => '$4.2M',
     'employees' => '120',
 ]);
+
+// Customer type, contact person, status and tags (the frontend shows details by type)
+foreach ([
+    'Acme Logistics' => ['account_type' => 'Customer', 'contact_name' => 'Jane Smith', 'contact_title' => 'Operations manager', 'status' => 'Won', 'lead_source' => 'Web Site', 'tags' => 'Enterprise, High Value'],
+    'Northwind Traders' => ['account_type' => 'Customer', 'contact_name' => 'Laura Chen', 'contact_title' => 'Purchasing lead', 'status' => 'Won', 'lead_source' => 'Existing Customer'],
+    'Bluefin Marine' => ['account_type' => 'Partner', 'contact_name' => 'Wei Ling Tan', 'contact_title' => 'Partnerships manager'],
+    'Kestrel Foods' => ['account_type' => 'Prospect', 'contact_name' => 'Jonas Weber', 'contact_title' => 'Head of logistics', 'status' => 'Contacted', 'lead_source' => 'Cold Call'],
+    'Granite Systems' => ['account_type' => 'Prospect', 'contact_name' => 'Maria Lopez', 'contact_title' => 'IT director', 'status' => 'Qualified', 'lead_source' => 'Trade Show'],
+    'Orchid Health' => ['account_type' => 'Customer', 'status' => 'Won', 'lead_source' => 'Partner'],
+    'Pioneer Print' => ['account_type' => 'Reseller', 'contact_name' => 'Tom Hughes'],
+    'Summit Outdoor' => ['account_type' => 'Customer', 'status' => 'Won'],
+    'Tidewater Energy' => ['account_type' => 'Competitor'],
+] as $name => $fields) {
+    Records::update('accounts', $accounts[$name], $fields);
+    $setDates('accounts', $accounts[$name], $createdDates[$name]);
+}
 $setDates('accounts', $accounts['Acme Logistics'], '2026-10-14 09:00:00', '2026-10-20 09:00:00');
 Db::run('DELETE FROM accounts_audit');   // seeding edits are not real changes
 
@@ -112,6 +130,8 @@ foreach ([
 }
 
 // ------------------------------------------------------------ opportunities
+// Fleet tracking is created in the Proposal/Price Quote stage, so its quotation
+// is created and sent automatically (it appears in the outbox).
 Records::create('opportunities', [
     'name' => 'Q4 renewal',
     'account_id' => $accounts['Acme Logistics'],

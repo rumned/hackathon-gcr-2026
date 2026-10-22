@@ -153,6 +153,8 @@ final class Modules
             'Direct Mail', 'Conference', 'Trade Show', 'Web Site', 'Word of mouth', 'Email', 'Campaign', 'Other',
         ]);
         $leadStatuses = self::options(['New', 'Assigned', 'In Process', 'Converted', 'Recycled', 'Dead']);
+        // Customer status used by the CRMPro frontend
+        $customerStatuses = self::options(['New', 'Contacted', 'Qualified', 'Proposal', 'Won']);
         $salesStages = self::options([
             'Prospecting', 'Qualification', 'Needs Analysis', 'Value Proposition', 'Id. Decision Makers',
             'Perception Analysis', 'Proposal/Price Quote', 'Negotiation/Review', 'Closed Won', 'Closed Lost',
@@ -195,7 +197,10 @@ final class Modules
                 'fields' => [
                     // "Overview" tab
                     'name' => ['type' => 'varchar', 'len' => 150, 'required' => true],
+                    'contact_name' => ['type' => 'varchar', 'len' => 150],     // main contact person
+                    'contact_title' => ['type' => 'varchar', 'len' => 100],
                     'phone_office' => ['type' => 'varchar', 'len' => 100],
+                    'phone_mobile' => ['type' => 'varchar', 'len' => 100],
                     'website' => ['type' => 'varchar', 'len' => 255],
                     'phone_fax' => ['type' => 'varchar', 'len' => 100],
                 ] + $address('billing_address') + $address('shipping_address') + [
@@ -208,6 +213,9 @@ final class Modules
                     'employees' => ['type' => 'varchar', 'len' => 10],
                     'parent_id' => ['type' => 'relate', 'module' => 'accounts'],      // "Member of"
                     'campaign_id' => ['type' => 'relate', 'module' => 'campaigns'],
+                    'status' => ['type' => 'enum', 'options' => $customerStatuses],
+                    'lead_source' => ['type' => 'enum', 'options' => $leadSources],
+                    'tags' => ['type' => 'varchar', 'len' => 255],                   // comma-separated
                 ],
                 // Subpanels under the detail view
                 'subpanels' => [

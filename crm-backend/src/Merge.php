@@ -63,6 +63,15 @@ final class Merge
                     );
                 }
             }
+            // quotations and sent emails of a duplicate
+            if ($moduleKey === 'accounts' || $moduleKey === 'opportunities') {
+                $column = $moduleKey === 'accounts' ? 'account_id' : 'opportunity_id';
+                Db::run("UPDATE quotes SET `$column` = ? WHERE `$column` IN ($marks)", [$primaryId, ...$duplicateIds]);
+            }
+            Db::run(
+                "UPDATE emails SET parent_id = ? WHERE parent_type = ? AND parent_id IN ($marks)",
+                [$primaryId, $module['label'], ...$duplicateIds],
+            );
             Relationships::merge($moduleKey, $duplicateIds, $primaryId);
             TargetLists::merge($duplicateIds, $primaryId);
             if (!empty($module['emails'])) {

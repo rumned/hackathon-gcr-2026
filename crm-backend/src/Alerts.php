@@ -8,7 +8,7 @@ use App\Http\HttpError;
 
 /**
  * "Alerts (3)" in the top bar. An alert is created when a user assigns
- * a record to another user.
+ * a record to another user, or when a quotation could not be sent.
  */
 final class Alerts
 {
@@ -30,6 +30,26 @@ final class Alerts
             'date_entered' => $now,
             'date_modified' => $now,
             'created_by' => $byUserId,
+        ]);
+    }
+
+    /** Any other alert, e.g. a quotation that could not be sent. */
+    public static function notify(string $moduleKey, string $recordId, string $toUserId, string $name, string $description, string $type = 'warning'): void
+    {
+        $module = Modules::get($moduleKey);
+        $now = Util::now();
+        Db::insert('alerts', [
+            'id' => Util::uuid(),
+            'name' => mb_substr($name, 0, 255),
+            'description' => $description,
+            'assigned_user_id' => $toUserId,
+            'is_read' => 0,
+            'target_module' => $module['label'],
+            'target_id' => $recordId,
+            'type' => $type,
+            'date_entered' => $now,
+            'date_modified' => $now,
+            'created_by' => Auth::userId(),
         ]);
     }
 

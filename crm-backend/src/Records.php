@@ -197,6 +197,9 @@ final class Records
                 Alerts::assigned($moduleKey, $id, $row['assigned_user_id'], $userId);
             }
         });
+        if ($moduleKey === 'opportunities') {
+            Quotes::opportunitySaved($id, null);   // auto-send a quotation in the Proposal stage
+        }
 
         return self::get($moduleKey, $id);
     }
@@ -249,6 +252,9 @@ final class Records
                 Alerts::assigned($moduleKey, $id, $newAssignee, $userId);
             }
         });
+        if ($moduleKey === 'opportunities') {
+            Quotes::opportunitySaved($id, $existing['sales_stage']);   // auto-send on entering the Proposal stage
+        }
 
         return self::get($moduleKey, $id);
     }

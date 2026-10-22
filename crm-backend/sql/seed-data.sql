@@ -1,5 +1,6 @@
 -- CRM seed data matching scripts/seed.php + wireframe extras
 -- Load after sql/schema.sql:  mysql -u root -p crm < sql/seed-data.sql
+-- The section at the end (customer fields, quotation, outbox email) was added for the CRMPro frontend.
 
 -- users password for all three: changeme (bcrypt hash below generated 2026-10-22 08:15:28)
 -- users (3 rows)
@@ -112,3 +113,23 @@ INSERT INTO `tracker` (`user_id`, `module_name`, `item_id`, `item_summary`, `dat
 INSERT INTO `alerts` (`id`, `name`, `date_entered`, `date_modified`, `created_by`, `description`, `deleted`, `assigned_user_id`, `is_read`, `target_module`, `target_id`, `type`) VALUES ('1a5689cc-c2ba-4dda-b971-45d506d968f4', 'Contact assigned to you: Jane Smith', '2026-10-22 08:15:28', '2026-10-22 08:15:28', '1a75603c-281b-4723-a0bd-62061b8ecdf6', 'Sally Bronsen assigned this Contact to you.', 0, '9055e645-fed6-49c5-8f5e-527fef18ea50', 0, 'Contacts', '4e85933d-99c5-4e21-8f72-d3febd1eaf56', 'info');
 INSERT INTO `alerts` (`id`, `name`, `date_entered`, `date_modified`, `created_by`, `description`, `deleted`, `assigned_user_id`, `is_read`, `target_module`, `target_id`, `type`) VALUES ('b9b511fb-14d0-4a7c-9278-e011189295f2', 'Opportunity assigned to you: Q4 renewal', '2026-10-22 08:15:28', '2026-10-22 08:15:28', '1a75603c-281b-4723-a0bd-62061b8ecdf6', 'Sally Bronsen assigned this Opportunity to you.', 0, '9055e645-fed6-49c5-8f5e-527fef18ea50', 0, 'Opportunities', 'bad50fa1-4146-41c9-8fe1-a7f544ce16dc', 'info');
 INSERT INTO `alerts` (`id`, `name`, `date_entered`, `date_modified`, `created_by`, `description`, `deleted`, `assigned_user_id`, `is_read`, `target_module`, `target_id`, `type`) VALUES ('85d883a3-3d96-4000-938a-3aced2a302d1', 'Task assigned to you: Send pricing sheet', '2026-10-22 08:15:28', '2026-10-22 08:15:28', '1a75603c-281b-4723-a0bd-62061b8ecdf6', 'Max Jensen assigned this Task to you.', 0, '9055e645-fed6-49c5-8f5e-527fef18ea50', 0, 'Tasks', '2f61ab54-0aa5-4fb6-9934-de98c4ccbce7', 'info');
+
+-- ---------------------------------------------------------------- added for the CRMPro frontend
+-- Customer type, contact person, status and tags (same values as scripts/seed.php)
+UPDATE `accounts` SET `account_type` = 'Customer', `contact_name` = 'Jane Smith', `contact_title` = 'Operations manager', `status` = 'Won', `lead_source` = 'Web Site', `tags` = 'Enterprise, High Value' WHERE `id` = '341c1d01-0271-4b1e-badb-33503474b289';
+UPDATE `accounts` SET `account_type` = 'Customer', `contact_name` = 'Laura Chen', `contact_title` = 'Purchasing lead', `status` = 'Won', `lead_source` = 'Existing Customer' WHERE `id` = '15ca9e4f-950f-4aee-a326-c695adc0fa45';
+UPDATE `accounts` SET `account_type` = 'Partner', `contact_name` = 'Wei Ling Tan', `contact_title` = 'Partnerships manager' WHERE `id` = '0fd6071e-2bdd-499d-bb95-f3233dc3ce05';
+UPDATE `accounts` SET `account_type` = 'Prospect', `contact_name` = 'Jonas Weber', `contact_title` = 'Head of logistics', `status` = 'Contacted', `lead_source` = 'Cold Call' WHERE `id` = '15668f11-0087-44df-9c86-32f9ed29b256';
+UPDATE `accounts` SET `account_type` = 'Prospect', `contact_name` = 'Maria Lopez', `contact_title` = 'IT director', `status` = 'Qualified', `lead_source` = 'Trade Show' WHERE `id` = 'f98eea0e-cb57-41f9-b685-01357a748ffd';
+UPDATE `accounts` SET `account_type` = 'Customer', `status` = 'Won', `lead_source` = 'Partner' WHERE `id` = '44182a2e-5314-4810-8875-c6ed07392471';
+UPDATE `accounts` SET `account_type` = 'Reseller', `contact_name` = 'Tom Hughes' WHERE `id` = '07f439d5-4600-4fde-b0fc-9b318c38e79d';
+UPDATE `accounts` SET `account_type` = 'Customer', `status` = 'Won' WHERE `id` = '2e99f721-0d16-4b0c-8925-27cd1d86e666';
+UPDATE `accounts` SET `account_type` = 'Competitor' WHERE `id` = 'cf2822d9-d8f8-4f09-a9c4-9cd5a3f737a2';
+
+-- Quotation sent automatically for Fleet tracking (Proposal/Price Quote stage), and its outbox email
+-- quotes (1 rows)
+INSERT INTO `quotes` (`id`, `quote_number`, `name`, `date_entered`, `date_modified`, `modified_user_id`, `created_by`, `description`, `deleted`, `assigned_user_id`, `account_id`, `opportunity_id`, `status`, `send_error`, `subtotal`, `discount_type`, `discount_value`, `discount_label`, `discount_amount`, `total`, `valid_until`, `date_sent`, `sent_to`) VALUES ('6287f79d-2744-472d-8fd6-ca19fdfaadd1', 1001, 'Quotation: Fleet tracking', '2026-10-22 08:15:28', '2026-10-22 08:15:28', '9055e645-fed6-49c5-8f5e-527fef18ea50', '9055e645-fed6-49c5-8f5e-527fef18ea50', NULL, 0, '9055e645-fed6-49c5-8f5e-527fef18ea50', 'f98eea0e-cb57-41f9-b685-01357a748ffd', 'bafbc133-84fb-45ad-a1ea-eb800f184bbe', 'Sent', NULL, '11500.00', NULL, NULL, NULL, '0.00', '11500.00', '2026-11-21', '2026-10-22 08:15:28', 'info@granite.example');
+-- quote_items (1 rows)
+INSERT INTO `quote_items` (`id`, `quote_id`, `position`, `name`, `quantity`, `unit_price`, `total`) VALUES ('88ac6c32-645c-4dcf-9e24-3369d640c84d', '6287f79d-2744-472d-8fd6-ca19fdfaadd1', 1, 'Fleet tracking', '1.00', '11500.00', '11500.00');
+-- emails (1 rows)
+INSERT INTO `emails` (`id`, `name`, `date_entered`, `date_modified`, `modified_user_id`, `created_by`, `deleted`, `assigned_user_id`, `date_sent`, `status`, `type`, `from_addr`, `to_addrs`, `description`, `parent_type`, `parent_id`, `quote_id`) VALUES ('cb148885-a19f-468c-b4d9-2585acf0b90a', 'Quotation Q-1001 for Granite Systems', '2026-10-22 08:15:28', '2026-10-22 08:15:28', '9055e645-fed6-49c5-8f5e-527fef18ea50', '9055e645-fed6-49c5-8f5e-527fef18ea50', 0, '9055e645-fed6-49c5-8f5e-527fef18ea50', '2026-10-22 08:15:28', 'outbox', 'out', 'CRMPro <quotes@crmpro.example>', 'info@granite.example', 'Dear Maria Lopez,\n\nPlease find our quotation Q-1001 below.\n\nItem                                 Qty      Unit price           Total\nFleet tracking                         1      $11,500.00      $11,500.00\n\nSubtotal: $11,500.00\nTotal: $11,500.00\n\nThis quotation is valid until 21 Nov 2026.\n\nKind regards,\nAdministrator\nCRMPro', 'Accounts', 'f98eea0e-cb57-41f9-b685-01357a748ffd', '6287f79d-2744-472d-8fd6-ca19fdfaadd1');
