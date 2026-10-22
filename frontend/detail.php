@@ -209,8 +209,16 @@ $notes      = api_get('/api/notes', [
 $caseFields = $cases ? api_get('/api/meta/cases')['fields'] : null;
 
 $type = $c['account_type'];
-$shows = fn (string $group): bool => type_shows($type, $group);
+$stage = $c['customer_stage'];
+$shows = fn (string $group): bool => type_shows($type, $stage, $group);
 $showQuotes = $shows('quotes') || $quotes;
+$showCompany = $shows('industry') || $shows('company_size') || $shows('member_of');
+$showLeadDetails = $shows('status') || $shows('lead_source') || $shows('campaign');
+
+// Purchases: the customer's won deals
+$purchases = array_values(array_filter($deals, fn ($d) => $d['sales_stage'] === 'Closed Won'));
+$purchaseDates = array_filter(array_column($purchases, 'date_closed'));
+$purchaseTotal = array_sum(array_map(fn ($d) => (float) $d['amount'], $purchases));
 $quote = $quotes[0] ?? null;
 $quotesByDeal = [];
 foreach (array_reverse($quotes) as $q) {
@@ -224,7 +232,19 @@ $lastContact = $contactDates ? max($contactDates) : null;
 $billing = address_lines($c, 'billing_address');
 $shipping = address_lines($c, 'shipping_address');
 $tags = tag_list($c['tags']);
-$activeTab = in_array($_GET['tab'] ?? '', ['overview', 'more', 'activity', 'deals', 'tasks', 'notes'], true) ? $_GET['tab'] : 'overview';
+// Tabs this customer's Type and Stage show
+$tabs = array_keys(array_filter([
+    'overview' => true,
+    'company' => $showCompany,
+    'lead' => $showLeadDetails,
+    'purchases' => $shows('purchases'),
+    'more' => true,
+    'activity' => true,
+    'deals' => true,
+    'tasks' => true,
+    'notes' => true,
+]));
+$activeTab = in_array($_GET['tab'] ?? '', $tabs, true) ? $_GET['tab'] : 'overview';
 $panel = fn (string $tab): string => $tab === $activeTab ? '' : ' hidden';
 $selected = fn (string $tab): string => $tab === $activeTab ? 'true' : 'false';
 
@@ -246,6 +266,7 @@ require __DIR__ . '/includes/layout-top.php';
       <div class="title-row">
         <h1 class="page-title"><?= e($c['name']) ?></h1>
         <?php if ($type !== null): ?><span class="status status--type"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?>
+        <?php if ($stage !== null): ?><span class="status status--stage"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?>
         <?php if ($shows('status') && $c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
         <form method="post">
           <input type="hidden" name="action" value="favorite">
@@ -255,7 +276,7 @@ require __DIR__ . '/includes/layout-top.php';
           </button>
         </form>
       </div>
-      <?php if ($c['contact_name'] !== null || $c['contact_title'] !== null): ?>
+      <?php if ($shows('contact_person') && ($c['contact_name'] !== null || $c['contact_title'] !== null)): ?>
         <div class="profile__meta">
           <?php if ($c['contact_name'] !== null): ?><span><svg class="icon"><use href="#i-user"/></svg><?= e($c['contact_name']) ?></span><?php endif; ?>
           <?php if ($c['contact_title'] !== null): ?><span><svg class="icon"><use href="#i-brief"/></svg><?= e($c['contact_title']) ?></span><?php endif; ?>
@@ -335,6 +356,15 @@ require __DIR__ . '/includes/layout-top.php';
   <div class="detail-main" data-tabs>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" type="button" aria-selected="<?= $selected('overview') ?>" data-tab="overview">Overview</button>
+      <?php if ($showCompany): ?>
+        <button class="tab" role="tab" type="button" aria-selected="<?= $selected('company') ?>" data-tab="company">Company</button>
+      <?php endif; ?>
+      <?php if ($showLeadDetails): ?>
+        <button class="tab" role="tab" type="button" aria-selected="<?= $selected('lead') ?>" data-tab="lead">Lead details</button>
+      <?php endif; ?>
+      <?php if ($shows('purchases')): ?>
+        <button class="tab" role="tab" type="button" aria-selected="<?= $selected('purchases') ?>" data-tab="purchases">Purchases</button>
+      <?php endif; ?>
       <button class="tab" role="tab" type="button" aria-selected="<?= $selected('more') ?>" data-tab="more">More information</button>
       <button class="tab" role="tab" type="button" aria-selected="<?= $selected('activity') ?>" data-tab="activity">Activity</button>
       <button class="tab" role="tab" type="button" aria-selected="<?= $selected('deals') ?>" data-tab="deals">Deals</button>
@@ -342,19 +372,20 @@ require __DIR__ . '/includes/layout-top.php';
       <button class="tab" role="tab" type="button" aria-selected="<?= $selected('notes') ?>" data-tab="notes">Notes</button>
     </div>
 
-    <!-- Overview: common details plus the ones this customer's Type uses -->
+    <!-- Overview: common details plus the ones this customer's Type and Stage use -->
     <dl class="fields" role="tabpanel" data-tabpanel="overview"<?= $panel('overview') ?>>
       <div class="fields__item"><dt class="fields__label">Name</dt><dd class="fields__value"><?= e($c['name']) ?></dd></div>
       <div class="fields__item"><dt class="fields__label">Type</dt><dd class="fields__value"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></dd></div>
-      <?php if ($shows('contact')): ?>
+      <div class="fields__item"><dt class="fields__label">Stage</dt><dd class="fields__value"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></dd></div>
+      <?php if ($shows('contact_person')): ?>
         <div class="fields__item"><dt class="fields__label">Contact name</dt><dd class="fields__value"><?= e($c['contact_name']) ?></dd></div>
         <div class="fields__item"><dt class="fields__label">Job title</dt><dd class="fields__value"><?= e($c['contact_title']) ?></dd></div>
+      <?php endif; ?>
         <div class="fields__item"><dt class="fields__label">Email</dt><dd class="fields__value">
           <?php if ($c['email1'] !== null): ?><a href="mailto:<?= e($c['email1']) ?>"><?= e($c['email1']) ?></a><?php endif; ?>
         </dd></div>
         <div class="fields__item"><dt class="fields__label">Office phone</dt><dd class="fields__value"><?= e($c['phone_office']) ?></dd></div>
         <div class="fields__item"><dt class="fields__label">Mobile</dt><dd class="fields__value"><?= e($c['phone_mobile']) ?></dd></div>
-      <?php endif; ?>
       <?php if ($shows('website')): ?>
         <div class="fields__item"><dt class="fields__label">Website</dt><dd class="fields__value">
           <?php if ($c['website'] !== null): ?>
@@ -385,21 +416,11 @@ require __DIR__ . '/includes/layout-top.php';
       <?php endif; ?>
     </dl>
 
-    <!-- More information -->
-    <dl class="fields" role="tabpanel" data-tabpanel="more"<?= $panel('more') ?>>
-      <?php if ($shows('status')): ?>
-        <div class="fields__item"><dt class="fields__label">Status</dt><dd class="fields__value">
-          <?php if ($c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
-        </dd></div>
-      <?php endif; ?>
-      <?php if ($shows('lead_source')): ?>
-        <div class="fields__item"><dt class="fields__label">Lead source</dt><dd class="fields__value"><?= e($c['lead_source']) ?></dd></div>
-      <?php endif; ?>
+    <?php if ($showCompany): ?>
+    <!-- Company: Business and Enterprise customers -->
+    <dl class="fields" role="tabpanel" data-tabpanel="company"<?= $panel('company') ?>>
       <?php if ($shows('industry')): ?>
         <div class="fields__item"><dt class="fields__label">Industry</dt><dd class="fields__value"><?= e($c['industry']) ?></dd></div>
-      <?php endif; ?>
-      <?php if ($shows('campaign')): ?>
-        <div class="fields__item"><dt class="fields__label">Campaign</dt><dd class="fields__value"><?= e($c['campaign_name']) ?></dd></div>
       <?php endif; ?>
       <?php if ($shows('company_size')): ?>
         <div class="fields__item"><dt class="fields__label">Annual revenue</dt><dd class="fields__value"><?= e($c['annual_revenue']) ?></dd></div>
@@ -410,6 +431,55 @@ require __DIR__ . '/includes/layout-top.php';
           <?php if ($c['parent_id'] !== null): ?><a href="detail.php?id=<?= e($c['parent_id']) ?>"><?= e($c['parent_name']) ?></a><?php endif; ?>
         </dd></div>
       <?php endif; ?>
+    </dl>
+    <?php endif; ?>
+
+    <?php if ($showLeadDetails): ?>
+    <!-- Lead details: potential customers -->
+    <dl class="fields" role="tabpanel" data-tabpanel="lead"<?= $panel('lead') ?>>
+      <?php if ($shows('status')): ?>
+        <div class="fields__item"><dt class="fields__label">Status</dt><dd class="fields__value">
+          <?php if ($c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
+        </dd></div>
+      <?php endif; ?>
+      <?php if ($shows('lead_source')): ?>
+        <div class="fields__item"><dt class="fields__label">Lead source</dt><dd class="fields__value"><?= e($c['lead_source']) ?></dd></div>
+      <?php endif; ?>
+      <?php if ($shows('campaign')): ?>
+        <div class="fields__item"><dt class="fields__label">Campaign</dt><dd class="fields__value"><?= e($c['campaign_name']) ?></dd></div>
+      <?php endif; ?>
+    </dl>
+    <?php endif; ?>
+
+    <?php if ($shows('purchases')): ?>
+    <!-- Purchases: won deals of existing customers -->
+    <section class="card" role="tabpanel" data-tabpanel="purchases"<?= $panel('purchases') ?>>
+      <h2>Purchases</h2>
+      <dl class="fields">
+        <div class="fields__item"><dt class="fields__label">Won deals</dt><dd class="fields__value"><?= count($purchases) ?></dd></div>
+        <div class="fields__item"><dt class="fields__label">Total purchased</dt><dd class="fields__value"><?= e(money($purchaseTotal)) ?></dd></div>
+        <div class="fields__item"><dt class="fields__label">First purchase</dt><dd class="fields__value"><?= e(fmt_date($purchaseDates ? min($purchaseDates) : null)) ?></dd></div>
+        <div class="fields__item"><dt class="fields__label">Last purchase</dt><dd class="fields__value"><?= e(fmt_date($purchaseDates ? max($purchaseDates) : null)) ?></dd></div>
+      </dl>
+      <?php if ($purchases): ?>
+        <div class="table-scroll">
+          <table class="table table--plain">
+            <thead><tr><th>Deal</th><th>Amount</th><th>Close date</th></tr></thead>
+            <tbody>
+              <?php foreach (array_reverse($purchases) as $p): ?>
+                <tr><td><?= e($p['name']) ?></td><td><?= e(money($p['amount'])) ?></td><td><?= e(fmt_date($p['date_closed'])) ?></td></tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php else: ?>
+        <p class="empty">No won deals yet.</p>
+      <?php endif; ?>
+    </section>
+    <?php endif; ?>
+
+    <!-- More information -->
+    <dl class="fields" role="tabpanel" data-tabpanel="more"<?= $panel('more') ?>>
       <div class="fields__item"><dt class="fields__label">Last contact</dt><dd class="fields__value"><?= e(fmt_date($lastContact)) ?></dd></div>
       <div class="fields__item"><dt class="fields__label">Date created</dt><dd class="fields__value"><?= e(fmt_date($c['date_entered'])) ?><?= $c['created_by_name'] ? ' by ' . e($c['created_by_name']) : '' ?></dd></div>
       <div class="fields__item"><dt class="fields__label">Date modified</dt><dd class="fields__value"><?= e(fmt_date($c['date_modified'])) ?><?= $c['modified_by_name'] ? ' by ' . e($c['modified_by_name']) : '' ?></dd></div>
@@ -583,6 +653,7 @@ require __DIR__ . '/includes/layout-top.php';
   </details>
   <?php endif; ?>
 
+  <?php if ($shows('contacts')): ?>
   <details class="subpanel" open>
     <summary class="subpanel__summary">
       <span class="subpanel__name"><svg class="icon icon--sm subpanel__chev"><use href="#i-chev"/></svg>Contacts</span>
@@ -609,7 +680,9 @@ require __DIR__ . '/includes/layout-top.php';
       <?php endif; ?>
     </div>
   </details>
+  <?php endif; ?>
 
+  <?php if ($shows('leads')): ?>
   <details class="subpanel"<?= $leads ? ' open' : '' ?>>
     <summary class="subpanel__summary">
       <span class="subpanel__name"><svg class="icon icon--sm subpanel__chev"><use href="#i-chev"/></svg>Leads</span>
@@ -636,7 +709,9 @@ require __DIR__ . '/includes/layout-top.php';
       <?php endif; ?>
     </div>
   </details>
+  <?php endif; ?>
 
+  <?php if ($shows('cases')): ?>
   <details class="subpanel"<?= $cases ? ' open' : '' ?>>
     <summary class="subpanel__summary">
       <span class="subpanel__name"><svg class="icon icon--sm subpanel__chev"><use href="#i-chev"/></svg>Cases</span>
@@ -668,6 +743,7 @@ require __DIR__ . '/includes/layout-top.php';
       <?php endif; ?>
     </div>
   </details>
+  <?php endif; ?>
 </div>
 
 <?php if ($quote): ?>

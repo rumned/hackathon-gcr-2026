@@ -52,12 +52,10 @@ function e($value): string
             and continue where you left off.
         </p>
         <div class="gold-line"></div>
-        <span class="brand-caption">SIMPLE. MODERN. PROFESSIONAL.</span>
     </div>
 
     <div class="form-panel">
         <div class="form-header">
-            <span class="eyebrow">WELCOME BACK</span>
             <h1>Login to your account</h1>
             <p>Enter your details below to continue.</p>
         </div>

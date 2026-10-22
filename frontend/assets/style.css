@@ -455,19 +455,19 @@ button { cursor: pointer; }
 .table td {
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    font-size: clamp(0.85rem, 0.8rem + 0.25vw, 1rem);
     white-space: nowrap;
 }
 .table th {
     background: var(--bg);
     color: var(--muted);
-    font-size: 12px;
+    font-size: clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem);
     font-weight: bold;
 }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover { background: var(--bg-faint); }
 
-.table--dashlet th { background: var(--slate-light); color: var(--white); }
+.table--dashlet th { background: #4A7FA7; color: var(--white); }
 
 .table--list th,
 .table--list td { padding: 12px; }
@@ -487,9 +487,10 @@ button { cursor: pointer; }
 .dashlet {
     min-width: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border: 2px solid var(--blue);
+    border-radius: 10px;
     background: var(--white);
+    box-shadow: 0 2px 8px rgba(23, 23, 23, 0.08);
 }
 
 .dashlet__head {
@@ -497,15 +498,16 @@ button { cursor: pointer; }
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px 12px;
-    background: var(--slate);
+    padding: 12px 16px;
+    border-bottom: 3px solid var(--gold);
+    background: #4A7FA7;
     color: var(--white);
 }
 .dashlet__title {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.2rem);
 }
 .dashlet__tools { display: flex; gap: 2px; }
 .dashlet__tools .mini-btn {
@@ -524,7 +526,7 @@ button { cursor: pointer; }
     justify-content: center;
     gap: 6px;
     padding: 8px;
-    background: var(--slate);
+    background: #4A7FA7;
     color: var(--white);
     font-size: 12px;
 }
@@ -584,13 +586,15 @@ button { cursor: pointer; }
 .act-btn .icon { width: 14px; height: 14px; }
 
 /* Pipeline bars */
-.bars { display: grid; gap: 14px; list-style: none; }
+.bars { display: grid; gap: 18px; list-style: none; }
 .bar {
     display: grid;
-    grid-template-columns: 100px minmax(0, 1fr) 80px;
+    grid-template-columns: minmax(140px, 180px) minmax(0, 1fr) minmax(100px, auto);
     align-items: center;
-    gap: 12px;
-    font-size: 13px;
+    gap: 12px 16px;
+    padding: 6px 0;
+    font-size: clamp(0.85rem, 0.8rem + 0.25vw, 1rem);
+    line-height: 1.5;
 }
 .bar__track {
     height: 16px;
@@ -604,7 +608,7 @@ button { cursor: pointer; }
     height: 100%;
     background: var(--blue);
 }
-.bar__value { font-weight: bold; text-align: right; }
+.bar__value { font-weight: bold; text-align: right; white-space: nowrap; }
 
 /* ===== LIST VIEW ===== */
 .status-tabs {
@@ -676,6 +680,7 @@ button { cursor: pointer; }
 .modal h2 { margin-bottom: 5px; }
 .modal p { margin-bottom: 8px; color: var(--muted); font-size: 13px; }
 .modal label { display: block; margin: 14px 0 7px; font-size: 13px; font-weight: bold; }
+.modal fieldset { border: 0; min-width: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .modal--wide { width: 720px; }
 .modal .checkbox-label { display: flex; margin: 16px 0 0; font-weight: normal; }
@@ -741,6 +746,7 @@ button { cursor: pointer; }
     background: var(--white);
 }
 .card h2 { margin-bottom: 14px; font-size: 16px; }
+.card .fields { margin-bottom: 16px; }
 
 .timeline,
 .task-list { display: flex; flex-direction: column; list-style: none; }
@@ -849,6 +855,7 @@ button { cursor: pointer; }
 .flash--error { background: var(--gold-soft); color: var(--danger); }
 
 .status--type { border: 1px solid var(--blue); background: var(--white); color: var(--blue); }
+.status--stage { border: 1px solid var(--gold); background: var(--white); color: var(--black); }
 .status-quote-sent { background: var(--blue); color: var(--white); }
 .status-quote-not-sent { background: var(--gold-soft); color: var(--danger); }
 
@@ -956,7 +963,16 @@ fieldset.form-field { border: 0; }
     .fields__item { grid-template-columns: 120px minmax(0, 1fr); }
     .pager { margin-left: 0; }
     .filters__search { width: 100%; }
-    .bar { grid-template-columns: 84px minmax(0, 1fr) 70px; }
+    .bar {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "label value"
+            "track track";
+        row-gap: 8px;
+    }
+    .bar > span:first-child { grid-area: label; min-width: 0; }
+    .bar__track { grid-area: track; }
+    .bar__value { grid-area: value; }
 }
 
 /* =========================================================
@@ -1030,8 +1046,9 @@ fieldset.form-field { border: 0; }
     justify-content: center;
     align-items: center;
     margin-bottom: 55px;
-    border: 2px solid var(--gold);
+    border: 2px solid var(--black);
     border-radius: 12px;
+    background: var(--black);
     color: var(--gold);
     font-size: 30px;
     font-weight: bold;

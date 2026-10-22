@@ -66,6 +66,7 @@ foreach ([
     ['Summit Outdoor', 'Denver', 'United States', '+1 303 000 0008', 'admin', 'shop@summit.example', '2026-09-17'],
     ['Tidewater Energy', 'Rotterdam', 'Netherlands', '+31 10 000 0009', 'sally', 'info@tidewater.example', '2026-09-11'],
     ['Willow Interiors', 'Dublin', 'Ireland', '+353 1 000 0010', 'max', 'studio@willow.example', '2026-09-02'],
+    ['Daniel Reyes', 'Kuala Lumpur', 'Malaysia', '+60 3 0000 0011', 'sally', 'daniel.reyes@mail.example', '2026-08-28'],
 ] as [$name, $city, $country, $phone, $user, $email, $created]) {
     $record = Records::create('accounts', [
         'name' => $name,
@@ -90,23 +91,24 @@ Records::update('accounts', $accounts['Acme Logistics'], [
     'shipping_address_postalcode' => 'EC1A 1AA',
     'shipping_address_country' => 'United Kingdom',
     'description' => 'Freight and warehousing client.',
-    'account_type' => 'Customer',
+    'account_type' => 'Enterprise',
     'industry' => 'Transportation',
     'annual_revenue' => '$4.2M',
     'employees' => '120',
 ]);
 
-// Customer type, contact person, status and tags (the frontend shows details by type)
+// Customer kind (account_type), stage, contact person, status and tags (the frontend shows details by kind and stage)
 foreach ([
-    'Acme Logistics' => ['account_type' => 'Customer', 'contact_name' => 'Jane Smith', 'contact_title' => 'Operations manager', 'status' => 'Won', 'lead_source' => 'Web Site', 'tags' => 'Enterprise, High Value'],
-    'Northwind Traders' => ['account_type' => 'Customer', 'contact_name' => 'Laura Chen', 'contact_title' => 'Purchasing lead', 'status' => 'Won', 'lead_source' => 'Existing Customer'],
-    'Bluefin Marine' => ['account_type' => 'Partner', 'contact_name' => 'Wei Ling Tan', 'contact_title' => 'Partnerships manager'],
-    'Kestrel Foods' => ['account_type' => 'Prospect', 'contact_name' => 'Jonas Weber', 'contact_title' => 'Head of logistics', 'status' => 'Contacted', 'lead_source' => 'Cold Call'],
-    'Granite Systems' => ['account_type' => 'Prospect', 'contact_name' => 'Maria Lopez', 'contact_title' => 'IT director', 'status' => 'Qualified', 'lead_source' => 'Trade Show'],
-    'Orchid Health' => ['account_type' => 'Customer', 'status' => 'Won', 'lead_source' => 'Partner'],
-    'Pioneer Print' => ['account_type' => 'Reseller', 'contact_name' => 'Tom Hughes'],
-    'Summit Outdoor' => ['account_type' => 'Customer', 'status' => 'Won'],
-    'Tidewater Energy' => ['account_type' => 'Competitor'],
+    'Acme Logistics' => ['account_type' => 'Enterprise', 'customer_stage' => 'Existing', 'contact_name' => 'Jane Smith', 'contact_title' => 'Operations manager', 'status' => 'Won', 'lead_source' => 'Web Site', 'tags' => 'Enterprise, High Value'],
+    'Northwind Traders' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Laura Chen', 'contact_title' => 'Purchasing lead', 'status' => 'Won', 'lead_source' => 'Existing Customer'],
+    'Bluefin Marine' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Wei Ling Tan', 'contact_title' => 'Partnerships manager'],
+    'Kestrel Foods' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Jonas Weber', 'contact_title' => 'Head of logistics', 'status' => 'Contacted', 'lead_source' => 'Cold Call'],
+    'Granite Systems' => ['account_type' => 'Business', 'customer_stage' => 'Lead', 'contact_name' => 'Maria Lopez', 'contact_title' => 'IT director', 'status' => 'Qualified', 'lead_source' => 'Trade Show'],
+    'Orchid Health' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'status' => 'Won', 'lead_source' => 'Partner'],
+    'Pioneer Print' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'contact_name' => 'Tom Hughes'],
+    'Summit Outdoor' => ['account_type' => 'Business', 'customer_stage' => 'Existing', 'status' => 'Won'],
+    'Tidewater Energy' => ['account_type' => 'Enterprise', 'customer_stage' => 'Lead'],
+    'Daniel Reyes' => ['account_type' => 'Individual', 'customer_stage' => 'Existing', 'phone_mobile' => '+60 12 000 0011', 'status' => 'Won', 'lead_source' => 'Web Site'],
 ] as $name => $fields) {
     Records::update('accounts', $accounts[$name], $fields);
     $setDates('accounts', $accounts[$name], $createdDates[$name]);
@@ -146,6 +148,21 @@ Records::create('opportunities', [
     'date_closed' => '2026-11-30',
     'amount' => 11500,
 ]);
+// Won deals: the purchase history of Northwind Traders and Daniel Reyes
+foreach ([
+    ['Pallet racking', 'Northwind Traders', '2026-03-20', 8200],
+    ['Warehouse scanners', 'Northwind Traders', '2026-07-08', 5400],
+    ['Home office desk', 'Daniel Reyes', '2026-05-14', 950],
+    ['Ergonomic chair', 'Daniel Reyes', '2026-09-03', 420],
+] as [$dealName, $account, $closed, $amount]) {
+    Records::create('opportunities', [
+        'name' => $dealName,
+        'account_id' => $accounts[$account],
+        'sales_stage' => 'Closed Won',
+        'date_closed' => $closed,
+        'amount' => $amount,
+    ]);
+}
 
 // ------------------------------------------------------------ calls, meetings, tasks
 $activity = static fn (string $account): array => ['parent_type' => 'Accounts', 'parent_id' => $accounts[$account]];

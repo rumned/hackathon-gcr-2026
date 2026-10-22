@@ -16,9 +16,10 @@ Table and column names follow SuiteCRM 7: UUID ids, a `deleted` flag for soft de
    mysql -u root -p -e "CREATE DATABASE crm CHARACTER SET utf8mb4"
    mysql -u root -p crm < sql/schema.sql
    ```
-   A database created from an earlier `schema.sql` only needs the migration:
+   A database created from an earlier `schema.sql` only needs the migrations it is missing, in order:
    ```
    mysql -u root -p crm < sql/migrations/001_customer_fields_quotes_outbox.sql
+   mysql -u root -p crm < sql/migrations/002_customer_kind_and_stage.sql
    ```
 2. Copy `config.example.php` to `config.php` and fill in the database details.
 3. Add the users and the sample data shown in the wireframe:

@@ -140,7 +140,9 @@ final class Modules
     private static function define(): array
     {
         // Dropdown values copied from SuiteCRM 7 (include/language/en_us.lang.php)
-        $accountTypes = self::options(['Analyst', 'Competitor', 'Customer', 'Integrator', 'Investor', 'Partner', 'Press', 'Prospect', 'Reseller', 'Other']);
+        // Customer kind and stage used by the CRMPro frontend (replace SuiteCRM's account types)
+        $accountTypes = ['Individual' => 'Individual (B2C)', 'Business' => 'Business (B2B)', 'Enterprise' => 'Enterprise'];
+        $customerStages = ['Lead' => 'Potential (Lead)', 'Existing' => 'Existing'];
         $industries = self::options([
             'Apparel', 'Banking', 'Biotechnology', 'Chemicals', 'Communications', 'Construction', 'Consulting',
             'Education', 'Electronics', 'Energy', 'Engineering', 'Entertainment', 'Environmental', 'Finance',
@@ -207,7 +209,8 @@ final class Modules
                     'description' => ['type' => 'text'],
                 ] + $assigned + [
                     // "More information" tab
-                    'account_type' => ['type' => 'enum', 'options' => $accountTypes],
+                    'account_type' => ['type' => 'enum', 'options' => $accountTypes],          // customer kind
+                    'customer_stage' => ['type' => 'enum', 'options' => $customerStages],
                     'industry' => ['type' => 'enum', 'options' => $industries],
                     'annual_revenue' => ['type' => 'varchar', 'len' => 100],
                     'employees' => ['type' => 'varchar', 'len' => 10],

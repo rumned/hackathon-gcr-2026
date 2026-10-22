@@ -28,8 +28,8 @@ $campaignOptions = array_map(
     api_get('/api/campaigns', ['per_page' => 100, 'sort' => 'name', 'dir' => 'asc'])['records'],
 );
 
-// Fields on each tab. Fields of a group the Type hides are disabled, so they are not sent and keep their values.
-$overviewKeys = ['name', 'account_type', 'contact_name', 'contact_title', 'phone_office', 'phone_mobile', 'website', 'phone_fax',
+// Fields on each tab. Fields of a group the Type or Stage hides are disabled, so they are not sent and keep their values.
+$overviewKeys = ['name', 'account_type', 'customer_stage', 'contact_name', 'contact_title', 'phone_office', 'phone_mobile', 'website', 'phone_fax',
     'billing_address_street', 'billing_address_city', 'billing_address_state', 'billing_address_postalcode', 'billing_address_country',
     'shipping_address_street', 'shipping_address_city', 'shipping_address_state', 'shipping_address_postalcode', 'shipping_address_country',
     'description', 'assigned_user_id'];
@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $type = ($v['account_type'] ?? '') !== '' ? $v['account_type'] : null;
+$stage = ($v['customer_stage'] ?? '') !== '' ? $v['customer_stage'] : null;
 $tab = ($errors && !array_diff(array_keys($errors), $moreKeys)) || (!$errors && ($_GET['tab'] ?? '') === 'more') ? 'more' : 'overview';
 
 function field_error(array $errors, string $k): void
@@ -101,10 +102,10 @@ function invalid(array $errors, string $k): string
 {
     return isset($errors[$k]) ? ' aria-invalid="true" aria-describedby="err-' . e($k) . '"' : '';
 }
-/** Attributes for a field group the current Type hides. */
-function group_attrs(?string $type, string $group): string
+/** Attributes for a field group the current Type or Stage hides. */
+function group_attrs(?string $type, ?string $stage, string $group): string
 {
-    return ' data-group="' . e($group) . '"' . (type_shows($type, $group) ? '' : ' hidden disabled');
+    return ' data-group="' . e($group) . '"' . (type_shows($type, $stage, $group) ? '' : ' hidden disabled');
 }
 
 $pageTitle = 'Edit ' . $c['name'];
@@ -120,7 +121,7 @@ require __DIR__ . '/includes/layout-top.php';
     </p>
     <div>
       <h1 class="page-title">Edit customer</h1>
-      <p class="page-sub">Update customer information and details. The fields shown depend on the Type.</p>
+      <p class="page-sub">Update customer information and details. The fields shown depend on the Type and Stage.</p>
     </div>
     <div class="form-actions">
       <button class="btn btn--gold" type="submit">Save changes</button>
@@ -143,21 +144,26 @@ require __DIR__ . '/includes/layout-top.php';
       </div>
       <div class="form-field">
         <label class="form-field__label" for="account_type">Type</label>
-        <select class="input" id="account_type" name="account_type" data-type-select<?= invalid($errors, 'account_type') ?>><?= options_html($meta['account_type']['options'], $v['account_type']) ?></select>
+        <select class="input" id="account_type" name="account_type" data-kind-select<?= invalid($errors, 'account_type') ?>><?= options_html($meta['account_type']['options'], $v['account_type']) ?></select>
         <?php field_error($errors, 'account_type'); ?>
       </div>
+      <div class="form-field">
+        <label class="form-field__label" for="customer_stage">Stage</label>
+        <select class="input" id="customer_stage" name="customer_stage" data-stage-select<?= invalid($errors, 'customer_stage') ?>><?= options_html($meta['customer_stage']['options'], $v['customer_stage']) ?></select>
+        <?php field_error($errors, 'customer_stage'); ?>
+      </div>
 
-      <fieldset class="form-field"<?= group_attrs($type, 'contact') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'contact_person') ?>>
         <label class="form-field__label" for="contact_name">Contact name</label>
         <input class="input" id="contact_name" name="contact_name" maxlength="150" value="<?= e($v['contact_name']) ?>"<?= invalid($errors, 'contact_name') ?>>
         <?php field_error($errors, 'contact_name'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'contact') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'contact_person') ?>>
         <label class="form-field__label" for="contact_title">Job title</label>
         <input class="input" id="contact_title" name="contact_title" maxlength="100" value="<?= e($v['contact_title']) ?>"<?= invalid($errors, 'contact_title') ?>>
         <?php field_error($errors, 'contact_title'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'contact') ?>>
+      <fieldset class="form-field">
         <label class="form-field__label" for="email">Email <span class="req">*</span></label>
         <div class="input-group">
           <input class="input" id="email" name="email" type="email" value="<?= e($v['email']) ?>" required<?= invalid($errors, 'email') ?>>
@@ -165,28 +171,28 @@ require __DIR__ . '/includes/layout-top.php';
         </div>
         <?php field_error($errors, 'email'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'contact') ?>>
+      <fieldset class="form-field">
         <label class="form-field__label" for="phone_office">Office phone <span class="req">*</span></label>
         <input class="input" id="phone_office" name="phone_office" type="tel" maxlength="100" value="<?= e($v['phone_office']) ?>" required<?= invalid($errors, 'phone_office') ?>>
         <?php field_error($errors, 'phone_office'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'contact') ?>>
+      <fieldset class="form-field">
         <label class="form-field__label" for="phone_mobile">Mobile</label>
         <input class="input" id="phone_mobile" name="phone_mobile" type="tel" maxlength="100" value="<?= e($v['phone_mobile']) ?>"<?= invalid($errors, 'phone_mobile') ?>>
         <?php field_error($errors, 'phone_mobile'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'website') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'website') ?>>
         <label class="form-field__label" for="website">Website</label>
         <input class="input" id="website" name="website" maxlength="255" value="<?= e($v['website']) ?>"<?= invalid($errors, 'website') ?>>
         <?php field_error($errors, 'website'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'fax') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'fax') ?>>
         <label class="form-field__label" for="phone_fax">Fax</label>
         <input class="input" id="phone_fax" name="phone_fax" type="tel" maxlength="100" value="<?= e($v['phone_fax']) ?>"<?= invalid($errors, 'phone_fax') ?>>
         <?php field_error($errors, 'phone_fax'); ?>
       </fieldset>
 
-      <fieldset class="form-field address"<?= group_attrs($type, 'billing') ?>>
+      <fieldset class="form-field address"<?= group_attrs($type, $stage, 'billing') ?>>
         <legend class="form-field__label">Billing address</legend>
         <textarea class="input input--textarea" name="billing_address_street" maxlength="150" aria-label="Billing street"><?= e($v['billing_address_street']) ?></textarea>
         <div class="address__row">
@@ -199,7 +205,7 @@ require __DIR__ . '/includes/layout-top.php';
         </div>
       </fieldset>
 
-      <fieldset class="form-field address"<?= group_attrs($type, 'shipping') ?>>
+      <fieldset class="form-field address"<?= group_attrs($type, $stage, 'shipping') ?>>
         <legend class="form-field__label">Shipping address</legend>
         <label class="checkbox-label"><input type="checkbox" name="ship_same"<?= $v['ship_same'] ? ' checked' : '' ?>> Copy address from billing</label>
         <textarea class="input input--textarea" name="shipping_address_street" maxlength="150" aria-label="Shipping street"><?= e($v['shipping_address_street']) ?></textarea>
@@ -213,11 +219,11 @@ require __DIR__ . '/includes/layout-top.php';
         </div>
       </fieldset>
 
-      <fieldset class="form-field form-field--wide"<?= group_attrs($type, 'description') ?>>
+      <fieldset class="form-field form-field--wide">
         <label class="form-field__label" for="description">Description</label>
         <textarea class="input input--textarea" id="description" name="description"><?= e($v['description']) ?></textarea>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'assigned') ?>>
+      <fieldset class="form-field">
         <label class="form-field__label" for="assigned_user_id">Assigned to</label>
         <select class="input" id="assigned_user_id" name="assigned_user_id"<?= invalid($errors, 'assigned_user_id') ?>><?= options_html($userOptions, $v['assigned_user_id'], false) ?></select>
         <?php field_error($errors, 'assigned_user_id'); ?>
@@ -226,42 +232,42 @@ require __DIR__ . '/includes/layout-top.php';
 
     <!-- More information -->
     <div class="form-grid" role="tabpanel" data-tabpanel="more"<?= $tab === 'more' ? '' : ' hidden' ?>>
-      <fieldset class="form-field"<?= group_attrs($type, 'status') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'status') ?>>
         <label class="form-field__label" for="status">Status</label>
         <select class="input" id="status" name="status"<?= invalid($errors, 'status') ?>><?= options_html($meta['status']['options'], $v['status']) ?></select>
         <?php field_error($errors, 'status'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'lead_source') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'lead_source') ?>>
         <label class="form-field__label" for="lead_source">Lead source</label>
         <select class="input" id="lead_source" name="lead_source"<?= invalid($errors, 'lead_source') ?>><?= options_html($meta['lead_source']['options'], $v['lead_source']) ?></select>
         <?php field_error($errors, 'lead_source'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'industry') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'industry') ?>>
         <label class="form-field__label" for="industry">Industry</label>
         <select class="input" id="industry" name="industry"<?= invalid($errors, 'industry') ?>><?= options_html($meta['industry']['options'], $v['industry']) ?></select>
         <?php field_error($errors, 'industry'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'campaign') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'campaign') ?>>
         <label class="form-field__label" for="campaign_id">Campaign</label>
         <select class="input" id="campaign_id" name="campaign_id"<?= invalid($errors, 'campaign_id') ?>><?= options_html($campaignOptions, $v['campaign_id']) ?></select>
         <?php field_error($errors, 'campaign_id'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'company_size') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'company_size') ?>>
         <label class="form-field__label" for="annual_revenue">Annual revenue</label>
         <input class="input" id="annual_revenue" name="annual_revenue" maxlength="100" value="<?= e($v['annual_revenue']) ?>"<?= invalid($errors, 'annual_revenue') ?>>
         <?php field_error($errors, 'annual_revenue'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'company_size') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'company_size') ?>>
         <label class="form-field__label" for="employees">Employees</label>
         <input class="input" id="employees" name="employees" maxlength="10" value="<?= e($v['employees']) ?>"<?= invalid($errors, 'employees') ?>>
         <?php field_error($errors, 'employees'); ?>
       </fieldset>
-      <fieldset class="form-field"<?= group_attrs($type, 'member_of') ?>>
+      <fieldset class="form-field"<?= group_attrs($type, $stage, 'member_of') ?>>
         <label class="form-field__label" for="parent_id">Member of</label>
         <select class="input" id="parent_id" name="parent_id"<?= invalid($errors, 'parent_id') ?>><?= options_html($accountOptions, $v['parent_id']) ?></select>
         <?php field_error($errors, 'parent_id'); ?>
       </fieldset>
-      <fieldset class="form-field form-field--wide"<?= group_attrs($type, 'tags') ?>>
+      <fieldset class="form-field form-field--wide">
         <label class="form-field__label" for="tag-input">Tags</label>
         <input type="hidden" name="tags_sent" value="1">
         <div class="tags" id="tags">

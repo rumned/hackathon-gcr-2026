@@ -1,54 +1,69 @@
 <?php
-// Which customer details the detail and edit pages show for each Type (account_type).
-// Edit these lists to change what a type shows.
+// Which customer details, tabs and subpanels each customer Type and Stage shows.
+// Edit GROUP_RULES to change what a Type or Stage shows.
 //
-// Every type shows the common groups. A customer with no Type (or a type not listed)
-// shows every group. A group that a type hides is left unchanged when the form is saved.
+// Type  (account_type):   Individual (B2C), Business (B2B), Enterprise
+// Stage (customer_stage): Lead (potential customer), Existing
+//
+// A group listed in GROUP_RULES shows only for the kinds in 'kinds' and the stages in 'stages'.
+// A group with no 'kinds' list shows for every Type; with no 'stages' list, for every Stage.
+// A customer with no Type (or Stage) set shows the group as far as that field is concerned.
+// Groups not listed here always show. A group that is hidden is left unchanged when the form is saved.
 //
 // Groups:
-//   contact       contact name, job title, email, office phone, mobile
-//   website       website
-//   description   description
-//   assigned      assigned to
-//   tags          tags
-//   fax           fax
-//   billing       billing address
-//   shipping      shipping address
-//   status        customer status (New, Contacted, Qualified, Proposal, Won)
-//   lead_source   lead source
-//   campaign      campaign
-//   industry      industry
-//   company_size  annual revenue and employees
-//   member_of     member of (parent account)
-//   quotes        quotation panel and Quotations subpanel (always shown if the customer has quotations)
+//   contact_person  contact name and job title (also in the page header)
+//   website         website
+//   fax             fax
+//   industry        industry                      } Company tab on the detail page
+//   company_size    annual revenue and employees  } (the tab shows when one of them shows)
+//   member_of       member of (parent account)    }
+//   contacts        Contacts subpanel
+//   status          customer status (New, Contacted, Qualified, Proposal, Won)  } Lead details tab
+//   lead_source     lead source                                                  } (the tab shows when
+//   campaign        campaign                                                     }  one of them shows)
+//   leads           Leads subpanel
+//   purchases       Purchases tab (won deals: count, total, first and last purchase)
+//   cases           Cases subpanel
+//
+// Always shown: email, office phone, mobile, billing and shipping address, description, assigned to,
+// tags, the quotation panel, and the Overview, More information, Activity, Deals, Tasks and Notes tabs.
 
-const COMMON_GROUPS = ['contact', 'website', 'description', 'assigned', 'tags'];
+const GROUP_RULES = [
+    'contact_person' => ['kinds' => ['Business', 'Enterprise']],
+    'website'        => ['kinds' => ['Business', 'Enterprise']],
+    'fax'            => ['kinds' => ['Business', 'Enterprise']],
+    'industry'       => ['kinds' => ['Business', 'Enterprise']],
+    'company_size'   => ['kinds' => ['Enterprise']],
+    'member_of'      => ['kinds' => ['Enterprise']],
+    'contacts'       => ['kinds' => ['Business', 'Enterprise']],
 
-const TYPE_GROUPS = [
-    'Customer'   => ['billing', 'shipping', 'fax', 'status', 'lead_source', 'industry', 'company_size', 'member_of', 'quotes'],
-    'Prospect'   => ['billing', 'status', 'lead_source', 'campaign', 'industry', 'company_size', 'quotes'],
-    'Reseller'   => ['billing', 'shipping', 'fax', 'industry', 'member_of', 'quotes'],
-    'Partner'    => ['billing', 'fax', 'industry', 'member_of', 'campaign'],
-    'Integrator' => ['billing', 'industry', 'member_of'],
-    'Investor'   => ['billing', 'industry', 'company_size'],
-    'Analyst'    => ['industry'],
-    'Press'      => [],
-    'Competitor' => ['industry', 'company_size'],
-    'Other'      => ['billing'],
+    'status'         => ['stages' => ['Lead']],
+    'lead_source'    => ['stages' => ['Lead']],
+    'campaign'       => ['stages' => ['Lead']],
+    'leads'          => ['stages' => ['Lead']],
+    'purchases'      => ['stages' => ['Existing']],
+    'cases'          => ['stages' => ['Existing']],
 ];
 
-/** Whether a customer of $type shows the details in $group. */
-function type_shows(?string $type, string $group): bool
+const KNOWN_KINDS = ['Individual', 'Business', 'Enterprise'];
+const KNOWN_STAGES = ['Lead', 'Existing'];
+
+/** Whether a customer of Type $kind and Stage $stage shows the details in $group. */
+function type_shows(?string $kind, ?string $stage, string $group): bool
 {
-    if ($type === null || $type === '' || !isset(TYPE_GROUPS[$type]) || in_array($group, COMMON_GROUPS, true)) {
-        return true;
+    $rule = GROUP_RULES[$group] ?? [];
+    if (isset($rule['kinds']) && in_array($kind, KNOWN_KINDS, true) && !in_array($kind, $rule['kinds'], true)) {
+        return false;
+    }
+    if (isset($rule['stages']) && in_array($stage, KNOWN_STAGES, true) && !in_array($stage, $rule['stages'], true)) {
+        return false;
     }
 
-    return in_array($group, TYPE_GROUPS[$type], true);
+    return true;
 }
 
-/** The same rules for app.js, which applies them when the Type changes on the edit page. */
+/** The same rules for app.js, which applies them when the Type or Stage changes on a form. */
 function type_rules_json(): string
 {
-    return json_encode(['common' => COMMON_GROUPS, 'types' => TYPE_GROUPS]);
+    return json_encode(['rules' => GROUP_RULES, 'kinds' => KNOWN_KINDS, 'stages' => KNOWN_STAGES]);
 }

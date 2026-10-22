@@ -52,22 +52,33 @@ document.querySelectorAll('[data-autosubmit]').forEach(function (box) {
   });
 });
 
-// ---------- Customer Type (edit view): show only the fields that type uses ----------
+// ---------- Customer Type and Stage (edit view, Add Customer): show only the fields they use ----------
 // Rules come from includes/customer-types.php. Hidden groups are disabled, so they are not sent.
-var typeForm = document.querySelector('[data-type-rules]');
-if (typeForm) {
+document.querySelectorAll('[data-type-rules]').forEach(function (typeForm) {
   var typeRules = JSON.parse(typeForm.dataset.typeRules);
-  var typeSelect = typeForm.querySelector('[data-type-select]');
-  typeSelect.addEventListener('change', function () {
-    var groups = typeRules.types[typeSelect.value];   // undefined: no type, show everything
+  var kindSelect = typeForm.querySelector('[data-kind-select]');
+  var stageSelect = typeForm.querySelector('[data-stage-select]');
+
+  // Same check as type_shows() in customer-types.php
+  var allows = function (list, known, value) {
+    return !list || known.indexOf(value) === -1 || list.indexOf(value) !== -1;
+  };
+
+  var apply = function () {
+    var kind = kindSelect ? kindSelect.value : '';
+    var stage = stageSelect ? stageSelect.value : '';
     typeForm.querySelectorAll('[data-group]').forEach(function (group) {
-      var name = group.dataset.group;
-      var show = !groups || typeRules.common.indexOf(name) !== -1 || groups.indexOf(name) !== -1;
+      var rule = typeRules.rules[group.dataset.group] || {};
+      var show = allows(rule.kinds, typeRules.kinds, kind) && allows(rule.stages, typeRules.stages, stage);
       group.hidden = !show;
       group.disabled = !show;
     });
+  };
+
+  [kindSelect, stageSelect].forEach(function (select) {
+    if (select) select.addEventListener('change', apply);
   });
-}
+});
 
 // ---------- Tags (edit view): press Enter to add, click x to remove ----------
 var tagBox = document.getElementById('tags');

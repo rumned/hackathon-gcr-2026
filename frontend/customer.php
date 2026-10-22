@@ -4,6 +4,7 @@ require __DIR__ . '/includes/bootstrap.php';
 $meta = api_get('/api/meta/accounts');
 $statusOptions = $meta['fields']['status']['options'];
 $typeOptions = $meta['fields']['account_type']['options'];
+$stageOptions = $meta['fields']['customer_stage']['options'];
 $statuses = array_column($statusOptions, 'value');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -15,13 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $status = $_POST['status'] ?? 'New';
+        $kind = $_POST['account_type'] ?? '';
+        $stage = $_POST['customer_stage'] ?? '';
+        $needsContact = type_shows($kind, $stage, 'contact_person');
 
-        if ($name === '' || $contact === '' || $email === '' || $phone === '') {
+        if ($name === '' || ($needsContact && $contact === '') || $email === '' || $phone === '') {
             flash('error', 'Customer not added: fill in every field.');
         } else {
             $result = api_send('POST', '/api/accounts', [
                 'name' => $name,
-                'contact_name' => $contact,
+                'account_type' => $kind,
+                'customer_stage' => $stage,
+                'contact_name' => $needsContact ? $contact : '',
                 'email_addresses' => [$email],
                 'phone_office' => $phone,
                 'status' => $status,
@@ -51,6 +57,7 @@ $tabStatuses = array_merge(['All'], $statuses);
 $search = trim($_GET['search'] ?? '');
 $statusFilter = $_GET['status'] ?? 'All';
 $typeFilter = $_GET['type'] ?? 'All';
+$stageFilter = $_GET['stage'] ?? 'All';
 
 if (!in_array($statusFilter, $tabStatuses, true)) {
     $statusFilter = 'All';
@@ -60,6 +67,9 @@ if (!in_array($statusFilter, $tabStatuses, true)) {
 $baseQuery = ['q' => $search];
 if ($typeFilter !== 'All') {
     $baseQuery['filter']['account_type'] = $typeFilter;
+}
+if ($stageFilter !== 'All') {
+    $baseQuery['filter']['customer_stage'] = $stageFilter;
 }
 
 $counts = [];
@@ -143,6 +153,13 @@ require __DIR__ . '/includes/layout-top.php';
       <?php endforeach; ?>
     </select>
 
+    <select class="input filters__select" name="stage" aria-label="Stage">
+      <option value="All">All Stages</option>
+      <?php foreach ($stageOptions as $option): ?>
+        <option value="<?= e($option['value']) ?>"<?= $stageFilter === $option['value'] ? ' selected' : '' ?>><?= e($option['label']) ?></option>
+      <?php endforeach; ?>
+    </select>
+
     <select class="input filters__select" name="status" aria-label="Status">
       <?php foreach ($tabStatuses as $s): ?>
         <option value="<?= e($s) ?>"<?= $statusFilter === $s ? ' selected' : '' ?>><?= $s === 'All' ? 'All Status' : e($s) ?></option>
@@ -189,6 +206,8 @@ require __DIR__ . '/includes/layout-top.php';
           <th class="table__narrow"><input type="checkbox" aria-label="Select all" data-select-all></th>
           <th class="table__narrow"><span class="visually-hidden">Edit</span></th>
           <th>Name</th>
+          <th>Type</th>
+          <th>Stage</th>
           <th>Contact</th>
           <th>City</th>
           <th>Billing country</th>
@@ -216,6 +235,8 @@ require __DIR__ . '/includes/layout-top.php';
                 <a href="detail.php?id=<?= e($c['id']) ?>"><strong><?= e($c['name']) ?></strong></a>
               </div>
             </td>
+            <td><?= e(option_label($typeOptions, $c['account_type'])) ?></td>
+            <td><?= e(option_label($stageOptions, $c['customer_stage'])) ?></td>
             <td><?= e($c['contact_name']) ?></td>
             <td><?= e($c['billing_address_city']) ?></td>
             <td><?= e($c['billing_address_country']) ?></td>
@@ -255,14 +276,22 @@ require __DIR__ . '/includes/layout-top.php';
     <h2 id="customerModalTitle">Add Customer</h2>
     <p>Enter the new customer's information.</p>
 
-    <form method="POST">
+    <form method="POST" data-type-rules="<?= e(type_rules_json()) ?>">
       <input type="hidden" name="action" value="add">
 
       <label for="add-name">Customer name</label>
       <input class="input" id="add-name" type="text" name="name" maxlength="150" required>
 
-      <label for="add-contact">Contact name</label>
-      <input class="input" id="add-contact" type="text" name="contact_name" maxlength="150" required>
+      <label for="add-type">Type</label>
+      <select class="input" id="add-type" name="account_type" data-kind-select><?= options_html($typeOptions, null) ?></select>
+
+      <label for="add-stage">Stage</label>
+      <select class="input" id="add-stage" name="customer_stage" data-stage-select><?= options_html($stageOptions, null) ?></select>
+
+      <fieldset data-group="contact_person">
+        <label for="add-contact">Contact name</label>
+        <input class="input" id="add-contact" type="text" name="contact_name" maxlength="150" required>
+      </fieldset>
 
       <label for="add-email">Email</label>
       <input class="input" id="add-email" type="email" name="email" required>

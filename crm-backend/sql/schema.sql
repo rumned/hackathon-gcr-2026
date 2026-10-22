@@ -61,6 +61,7 @@ CREATE TABLE accounts (
   status VARCHAR(100) NULL,
   lead_source VARCHAR(100) NULL,
   tags VARCHAR(255) NULL,
+  customer_stage VARCHAR(50) NULL,   -- Lead or Existing (account_type holds Individual, Business, Enterprise)
   PRIMARY KEY (id),
   KEY idx_accnt_name_del (name, deleted),
   KEY idx_accnt_assigned_del (deleted, assigned_user_id),

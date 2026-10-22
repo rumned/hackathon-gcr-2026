@@ -33,7 +33,7 @@ final class Bulk
     }
 
     /**
-     * Body {"ids": [...], "fields": {"assigned_user_id": "...", "account_type": "Customer"}}.
+     * Body {"ids": [...], "fields": {"assigned_user_id": "...", "account_type": "Business"}}.
      * All records are updated or, on a validation error, none are.
      */
     public static function update(string $moduleKey, array $body): array
