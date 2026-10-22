@@ -60,7 +60,9 @@
                     <span>Remember me</span>
                 </label>
 
-                <a href="#" class="text-link">Forgot password?</a>
+                <a href="forgot-password.php" class="text-link">
+    Forgot password?
+</a>
             </div>
 
             <button type="button" class="btn-primary">
