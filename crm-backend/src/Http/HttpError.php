@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http;
+
+/**
+ * Thrown anywhere in the app to end the request with an HTTP error.
+ * $details is merged into the JSON body, e.g. ['errors' => [...]].
+ */
+final class HttpError extends \RuntimeException
+{
+    public function __construct(public readonly int $status, string $message, public readonly array $details = [])
+    {
+        parent::__construct($message);
+    }
+}
