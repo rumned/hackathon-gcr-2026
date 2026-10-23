@@ -128,6 +128,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             redirect($self);
 
+        case 'status':
+            $newStatus = (string) ($_POST['status'] ?? '');
+            $statusOptions = array_column(api_get('/api/meta/accounts')['fields']['status']['options'], 'value');
+            if (!in_array($newStatus, $statusOptions, true)) {
+                flash('error', 'Status not updated: unknown status.');
+            } else {
+                $result = move_customer($c['id'], $newStatus);
+                if ($result['ok']) {
+                    flash('success', "{$c['name']} moved to $newStatus.");
+                    $c = api_get('/api/accounts/' . rawurlencode($c['id']));
+                } else {
+                    flash('error', 'Status not updated: ' . (implode(' ', $result['errors']) ?: $result['message']));
+                }
+            }
+            redirect($self);
+
         case 'stage':
             $dealId = (string) ($_POST['opportunity_id'] ?? '');
             $before = count(deal_quotes($c['id'], $dealId));
@@ -189,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ---------------------------------------------------------------- data for the page
 $meta = api_get('/api/meta/accounts');
+$statusOptions = $meta['fields']['status']['options'];
 $stageOptions = api_get('/api/meta/opportunities')['fields']['sales_stage']['options'];
 $base = '/api/accounts/' . rawurlencode($c['id']);
 
@@ -211,6 +228,9 @@ $caseFields = $cases ? api_get('/api/meta/cases')['fields'] : null;
 $type = $c['account_type'];
 $stage = $c['customer_stage'];
 $shows = fn (string $group): bool => type_shows($type, $stage, $group);
+$currentStatus = $c['status'];
+$prevStatus = prev_status($statusOptions, $currentStatus);
+$nextStatus = next_status($statusOptions, $currentStatus);
 $showQuotes = $shows('quotes') || $quotes;
 $showCompany = $shows('industry') || $shows('company_size') || $shows('member_of');
 $showLeadDetails = $shows('status') || $shows('lead_source') || $shows('campaign');
@@ -258,7 +278,7 @@ require __DIR__ . '/includes/layout-top.php';
 ?>
 
 <div class="page-head">
-  <p class="breadcrumb"><a href="customer.php">Customers</a> / <?= e($c['name']) ?></p>
+  <p class="breadcrumb"><a href="customer.php">Customer Profiles</a> / <?= e($c['name']) ?></p>
 
   <div class="profile">
     <span class="avatar avatar--lg" aria-hidden="true"><?= e(initials($c['name'])) ?></span>
@@ -266,8 +286,8 @@ require __DIR__ . '/includes/layout-top.php';
       <div class="title-row">
         <h1 class="page-title"><?= e($c['name']) ?></h1>
         <?php if ($type !== null): ?><span class="status status-type-<?= e(badge_slug($type)) ?>"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?>
-        <?php if ($stage !== null): ?><span class="status status-stage-<?= e(badge_slug($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?>
-        <?php if ($shows('status') && $c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
+        <?php if ($stage !== null): ?><span class="status <?= e(stage_badge_class($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?>
+        <?php if ($currentStatus !== null): ?><span class="status <?= e(status_class($currentStatus)) ?>"><?= e($currentStatus) ?></span><?php endif; ?>
         <form method="post">
           <input type="hidden" name="action" value="favorite">
           <button class="mini-btn<?= $c['is_favorite'] ? ' is-on' : '' ?>" type="submit"
@@ -282,6 +302,23 @@ require __DIR__ . '/includes/layout-top.php';
           <?php if ($c['contact_title'] !== null): ?><span><svg class="icon"><use href="#i-brief"/></svg><?= e($c['contact_title']) ?></span><?php endif; ?>
         </div>
       <?php endif; ?>
+      <form method="post" class="status-change">
+        <input type="hidden" name="action" value="status">
+        <label class="visually-hidden" for="customer-status">Change status</label>
+        <select class="input status-change__select" id="customer-status" name="status">
+          <?php foreach ($statusOptions as $option): ?>
+            <option value="<?= e($option['value']) ?>"<?= $currentStatus === $option['value'] ? ' selected' : '' ?>><?= e($option['label']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <button class="btn btn--sm" type="submit">Change</button>
+        <?php if ($prevStatus !== null): ?>
+          <button class="btn btn--sm status-change__prev" type="submit" formaction="<?= e($self) ?>" formmethod="post" name="prev_to" value="<?= e($prevStatus) ?>" title="Move to <?= e($prevStatus) ?>" onclick="this.form.status.value=this.value">&larr; <?= e(move_short($prevStatus)) ?></button>
+        <?php endif; ?>
+        <?php if ($nextStatus !== null): ?>
+          <button class="btn btn--sm btn--blue" type="submit" name="next_to" value="<?= e($nextStatus) ?>" title="Move to <?= e($nextStatus) ?>" onclick="this.form.status.value=this.value"><?= e(move_short($nextStatus)) ?> &rarr;</button>
+        <?php endif; ?>
+      </form>
+      <p class="field-hint status-change__hint">Changing the dropdown and pressing Change, or one of the arrow buttons, moves this customer. Moving to Won also sets Stage to Existing.</p>
     </div>
     <div class="page-head__actions">
       <a class="btn btn--gold" href="edit.php?id=<?= e($c['id']) ?>">Edit</a>
@@ -376,7 +413,7 @@ require __DIR__ . '/includes/layout-top.php';
     <dl class="fields" role="tabpanel" data-tabpanel="overview"<?= $panel('overview') ?>>
       <div class="fields__item"><dt class="fields__label">Name</dt><dd class="fields__value"><?= e($c['name']) ?></dd></div>
       <div class="fields__item"><dt class="fields__label">Type</dt><dd class="fields__value"><?php if ($type !== null && $type !== ''): ?><span class="status status-type-<?= e(badge_slug($type)) ?>"><?= e(option_label($meta['fields']['account_type']['options'], $type)) ?></span><?php endif; ?></dd></div>
-      <div class="fields__item"><dt class="fields__label">Stage</dt><dd class="fields__value"><?php if ($stage !== null && $stage !== ''): ?><span class="status status-stage-<?= e(badge_slug($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?></dd></div>
+      <div class="fields__item"><dt class="fields__label">Stage</dt><dd class="fields__value"><?php if ($stage !== null && $stage !== ''): ?><span class="status <?= e(stage_badge_class($stage)) ?>"><?= e(option_label($meta['fields']['customer_stage']['options'], $stage)) ?></span><?php endif; ?></dd></div>
       <?php if ($shows('contact_person')): ?>
         <div class="fields__item"><dt class="fields__label">Contact name</dt><dd class="fields__value"><?= e($c['contact_name']) ?></dd></div>
         <div class="fields__item"><dt class="fields__label">Job title</dt><dd class="fields__value"><?= e($c['contact_title']) ?></dd></div>
@@ -439,7 +476,7 @@ require __DIR__ . '/includes/layout-top.php';
     <dl class="fields" role="tabpanel" data-tabpanel="lead"<?= $panel('lead') ?>>
       <?php if ($shows('status')): ?>
         <div class="fields__item"><dt class="fields__label">Status</dt><dd class="fields__value">
-          <?php if ($c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
+          <?php if ($c['status'] !== null): ?><span class="status <?= e(status_class($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?>
         </dd></div>
       <?php endif; ?>
       <?php if ($shows('lead_source')): ?>

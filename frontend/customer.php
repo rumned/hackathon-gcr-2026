@@ -104,14 +104,14 @@ function listUrl(array $changes) {
     return '?' . http_build_query(array_merge($params, $changes));
 }
 
-$pageTitle = 'Customers';
+$pageTitle = 'Customer Profiles';
 $activeModule = 'customers';
 require __DIR__ . '/includes/layout-top.php';
 ?>
 
 <div class="page-head">
   <div>
-    <h1 class="page-title">Customers</h1>
+    <h1 class="page-title">Customer Profiles</h1>
     <p class="page-sub">Manage your customer relationships.</p>
   </div>
   <button class="btn btn--gold" type="button" data-open-modal="customerModal">
@@ -236,13 +236,13 @@ require __DIR__ . '/includes/layout-top.php';
               </div>
             </td>
             <td><?php if ($c['account_type'] !== null && $c['account_type'] !== ''): ?><span class="status status-type-<?= e(badge_slug($c['account_type'])) ?>"><?= e(option_label($typeOptions, $c['account_type'])) ?></span><?php endif; ?></td>
-            <td><?php if ($c['customer_stage'] !== null && $c['customer_stage'] !== ''): ?><span class="status status-stage-<?= e(badge_slug($c['customer_stage'])) ?>"><?= e(option_label($stageOptions, $c['customer_stage'])) ?></span><?php endif; ?></td>
+            <td><?php if ($c['customer_stage'] !== null && $c['customer_stage'] !== ''): ?><span class="status <?= e(stage_badge_class($c['customer_stage'])) ?>"><?= e(option_label($stageOptions, $c['customer_stage'])) ?></span><?php endif; ?></td>
             <td><?= e($c['contact_name']) ?></td>
             <td><?= e($c['billing_address_city']) ?></td>
             <td><?= e($c['billing_address_country']) ?></td>
             <td class="email"><?= e($c['email1']) ?></td>
             <td><?= e($c['phone_office']) ?></td>
-            <td><?php if ($c['status'] !== null): ?><span class="status status-<?= e(strtolower($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?></td>
+            <td><?php if ($c['status'] !== null): ?><span class="status <?= e(status_class($c['status'])) ?>"><?= e($c['status']) ?></span><?php endif; ?></td>
             <td><?= e($c['assigned_user_name']) ?></td>
             <td><?= e(fmt_date($c['date_entered'])) ?></td>
             <td>

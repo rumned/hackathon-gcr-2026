@@ -227,10 +227,10 @@ require __DIR__ . '/includes/layout-top.php';
     </div>
   </article>
 
-  <!-- My customers (wireframe's "My accounts") -->
+  <!-- My customer profiles (wireframe's "My accounts") -->
   <article class="dashlet">
     <header class="dashlet__head">
-      <h2 class="dashlet__title"><svg class="icon icon--sm"><use href="#i-users"/></svg> My customers</h2>
+      <h2 class="dashlet__title"><svg class="icon icon--sm"><use href="#i-users"/></svg> My customer profiles</h2>
       <div class="dashlet__tools">
         <button class="mini-btn" type="button" aria-label="Refresh"><svg class="icon"><use href="#i-refresh"/></svg></button>
         <button class="mini-btn" type="button" aria-label="Edit dashlet"><svg class="icon"><use href="#i-gear"/></svg></button>

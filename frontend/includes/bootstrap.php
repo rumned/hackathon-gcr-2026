@@ -4,6 +4,7 @@
 
 require __DIR__ . '/api.php';
 require __DIR__ . '/customer-types.php';
+require __DIR__ . '/pipeline.php';
 
 function e($value): string
 {
@@ -120,16 +121,17 @@ function options_html(array $options, ?string $selected, bool $blank = true): st
     return $html;
 }
 
-/** Option label for a stored dropdown value, e.g. "Id. Decision Makers" -> "Identifying Decision Makers". */
+/** Option label for a stored dropdown value, e.g. "Id. Decision Makers" -> "Identifying Decision Makers".
+ *  Customer Type labels drop the channel suffix: "Individual (B2C)" -> "Individual". */
 function option_label(array $options, ?string $value): string
 {
     foreach ($options as $option) {
         if ((string) $option['value'] === (string) $value) {
-            return (string) $option['label'];
+            return (string) preg_replace('/\s*\((B2B|B2C)\)\s*/', '', (string) $option['label']);
         }
     }
 
-    return (string) $value;
+    return (string) preg_replace('/\s*\((B2B|B2C)\)\s*/', '', (string) $value);
 }
 
 /** Badge CSS suffix for a stored dropdown value, e.g. "Closed Won" -> "closed-won". */

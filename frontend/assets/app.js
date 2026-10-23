@@ -80,6 +80,51 @@ document.querySelectorAll('[data-type-rules]').forEach(function (typeForm) {
   });
 });
 
+// ---------- Stages board: drag a card to another column to change the customer's stage ----------
+var board = document.querySelector('[data-board]');
+if (board) {
+  var stageForm = function (card, status) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.innerHTML = '<input type="hidden" name="action" value="move">'
+      + '<input type="hidden" name="id">'
+      + '<input type="hidden" name="status">';
+    form.querySelector('[name="id"]').value = card.dataset.id;
+    form.querySelector('[name="status"]').value = status;
+    document.body.appendChild(form);
+    form.submit();
+  };
+
+  var dragged = null;
+  board.addEventListener('dragstart', function (event) {
+    dragged = event.target.closest('.board-card');
+    if (!dragged) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', dragged.dataset.id);
+    dragged.classList.add('is-dragging');
+  });
+  board.addEventListener('dragend', function () {
+    if (dragged) dragged.classList.remove('is-dragging');
+    dragged = null;
+    board.querySelectorAll('.is-over').forEach(function (zone) { zone.classList.remove('is-over'); });
+  });
+  board.addEventListener('dragover', function (event) {
+    var zone = event.target.closest('[data-dropzone]');
+    if (!zone || !dragged) return;
+    event.preventDefault();   // allows the drop
+    board.querySelectorAll('.is-over').forEach(function (z) { if (z !== zone) z.classList.remove('is-over'); });
+    zone.classList.add('is-over');
+  });
+  board.addEventListener('drop', function (event) {
+    var zone = event.target.closest('[data-dropzone]');
+    if (!zone || !dragged) return;
+    event.preventDefault();
+    var status = zone.closest('[data-status]').dataset.status;
+    if (dragged.parentElement === zone) return;
+    stageForm(dragged, status);
+  });
+}
+
 // ---------- Tags (edit view): press Enter to add, click x to remove ----------
 var tagBox = document.getElementById('tags');
 var tagInput = document.getElementById('tag-input');

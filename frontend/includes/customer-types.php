@@ -2,7 +2,7 @@
 // Which customer details, tabs and subpanels each customer Type and Stage shows.
 // Edit GROUP_RULES to change what a Type or Stage shows.
 //
-// Type  (account_type):   Individual (B2C), Business (B2B), Enterprise
+// Type  (account_type):   Individual, Business, Enterprise
 // Stage (customer_stage): Lead (potential customer), Existing
 //
 // A group listed in GROUP_RULES shows only for the kinds in 'kinds' and the stages in 'stages'.
