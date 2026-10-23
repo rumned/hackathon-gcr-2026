@@ -50,6 +50,8 @@ function quote_flash(string $accountId, array $deal, int $quotesBefore, string $
 // ---------------------------------------------------------------- form actions
 $discountErrors = [];
 $discountInput = ['label' => '', 'value' => '', 'type' => 'percent', 'send' => true];
+$quoteErrors = [];
+$quoteInput = ['source' => '', 'opportunity_id' => '', 'items' => [], 'label' => '', 'value' => '', 'type' => 'percent', 'send' => true];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -117,6 +119,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect($self);
             }
             $discountErrors = $result['errors'] ?: ['value' => $result['message']];
+            break;
+
+        case 'create_quote':
+            // Promotion for a customer with no quotation: creates the quotation with the discount
+            $quoteInput = [
+                'source' => ($_POST['source'] ?? '') === 'deal' ? 'deal' : 'items',
+                'opportunity_id' => (string) ($_POST['opportunity_id'] ?? ''),
+                'items' => [],
+                'label' => trim($_POST['label'] ?? ''),
+                'value' => trim($_POST['value'] ?? ''),
+                'type' => ($_POST['type'] ?? '') === 'amount' ? 'amount' : 'percent',
+                'send' => isset($_POST['send']),
+            ];
+            foreach ((array) ($_POST['item_name'] ?? []) as $n => $itemName) {
+                $item = [
+                    'name' => trim((string) $itemName),
+                    'quantity' => trim((string) ($_POST['item_quantity'][$n] ?? '')),
+                    'unit_price' => trim((string) ($_POST['item_price'][$n] ?? '')),
+                ];
+                if ($item['name'] !== '' || $item['unit_price'] !== '') {   // rows left blank are skipped
+                    $quoteInput['items'][] = $item;
+                }
+            }
+            if ($quoteInput['value'] === '') {
+                $quoteErrors['value'] = 'Enter a discount.';
+                break;
+            }
+            $body = $quoteInput['source'] === 'deal'
+                ? ['opportunity_id' => $quoteInput['opportunity_id']]
+                : ['items' => array_map(fn ($i) => [
+                    'name' => $i['name'],
+                    'quantity' => $i['quantity'] === '' ? 1 : $i['quantity'],
+                    'unit_price' => $i['unit_price'],
+                ], $quoteInput['items'])];
+            $body['discount'] = ['type' => $quoteInput['type'], 'value' => $quoteInput['value'], 'label' => $quoteInput['label']];
+            $body['send'] = $quoteInput['send'];
+            $result = api_send('POST', '/api/accounts/' . rawurlencode($c['id']) . '/quotes', $body);
+            if ($result['ok']) {
+                $q = $result['data'];
+                if (!$quoteInput['send']) {
+                    flash('success', "Quotation {$q['number']} was created. It was not sent.");
+                } elseif ($q['status'] === 'Sent') {
+                    flash('success', "Quotation {$q['number']} was created and " . delivery_text($q) . '.');
+                } else {
+                    flash('error', "Quotation {$q['number']} was created but not sent: {$q['send_error']}");
+                }
+                redirect($self);
+            }
+            $labels = ['discount.value' => 'Discount', 'discount.type' => 'Discount type', 'discount.label' => 'Promotion name'];
+            foreach ($result['errors'] as $field => $message) {
+                $quoteErrors[$field] = isset($labels[$field]) ? "{$labels[$field]}: " . lcfirst($message) . '.' : "$message.";
+            }
+            $quoteErrors = $quoteErrors ?: ['form' => $result['message']];
             break;
 
         case 'send_quote':
@@ -240,6 +295,9 @@ $purchases = array_values(array_filter($deals, fn ($d) => $d['sales_stage'] === 
 $purchaseDates = array_filter(array_column($purchases, 'date_closed'));
 $purchaseTotal = array_sum(array_map(fn ($d) => (float) $d['amount'], $purchases));
 $quote = $quotes[0] ?? null;
+$quotableDeals = array_values(array_filter($deals, fn ($d) => $d['amount'] !== null && (float) $d['amount'] > 0));
+$quoteSource = $quoteInput['source'] ?: ($quotableDeals ? 'deal' : 'items');
+$quoteItems = $quoteInput['items'] ?: [['name' => '', 'quantity' => '1', 'unit_price' => '']];
 $quotesByDeal = [];
 foreach (array_reverse($quotes) as $q) {
     $quotesByDeal[$q['opportunity_id']] = $q;   // newest quotation per deal
@@ -321,6 +379,7 @@ require __DIR__ . '/includes/layout-top.php';
       <p class="field-hint status-change__hint">Changing the dropdown and pressing Change, or one of the arrow buttons, moves this customer. Moving to Won also sets Stage to Existing.</p>
     </div>
     <div class="page-head__actions">
+      <button class="btn btn--gold" type="button" data-open-modal="<?= $quote ? 'discountModal' : 'quoteModal' ?>">Promotion / discount</button>
       <a class="btn btn--gold" href="edit.php?id=<?= e($c['id']) ?>">Edit</a>
       <div class="menu menu--right">
         <button class="btn" type="button" aria-haspopup="true">
@@ -822,6 +881,78 @@ require __DIR__ . '/includes/layout-top.php';
       <div class="modal-actions">
         <button type="button" class="btn" data-close-modal>Cancel</button>
         <button type="submit" class="btn btn--gold">Apply discount</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php else: ?>
+<!-- Promotion for a customer with no quotation: create a quotation with the discount -->
+<div class="modal-backdrop<?= $quoteErrors ? ' show' : '' ?>" id="quoteModal">
+  <div class="modal modal--wide modal--scroll" role="dialog" aria-modal="true" aria-labelledby="quoteTitle">
+    <h2 id="quoteTitle">Promotion / discount</h2>
+    <p><?= e($c['name']) ?> has no quotation yet. This creates one with the discount.</p>
+
+    <form method="post" data-quote-form>
+      <input type="hidden" name="action" value="create_quote">
+
+      <fieldset>
+        <legend>Quotation for</legend>
+        <label class="checkbox-label">
+          <input type="radio" name="source" value="deal" data-quote-source<?= $quoteSource === 'deal' ? ' checked' : '' ?><?= $quotableDeals ? '' : ' disabled' ?>>
+          One of this customer's deals<?= $quotableDeals ? '' : ' (no deals with an amount)' ?>
+        </label>
+        <label class="checkbox-label">
+          <input type="radio" name="source" value="items" data-quote-source<?= $quoteSource === 'items' ? ' checked' : '' ?>>
+          Items typed in
+        </label>
+      </fieldset>
+
+      <fieldset data-quote-panel="deal"<?= $quoteSource === 'deal' ? '' : ' hidden disabled' ?>>
+        <label for="quote-deal">Deal</label>
+        <select class="input" id="quote-deal" name="opportunity_id">
+          <?php foreach ($quotableDeals as $d): ?>
+            <option value="<?= e($d['id']) ?>"<?= $quoteInput['opportunity_id'] === $d['id'] ? ' selected' : '' ?>><?= e($d['name']) ?>, <?= e(money($d['amount'])) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </fieldset>
+
+      <fieldset data-quote-panel="items"<?= $quoteSource === 'items' ? '' : ' hidden disabled' ?>>
+        <div class="quote-items" data-quote-items>
+          <div class="quote-items__head" aria-hidden="true"><span>Item</span><span>Qty</span><span>Unit price</span></div>
+          <?php foreach ($quoteItems as $item): ?>
+            <div class="quote-items__row">
+              <input class="input quote-items__name" name="item_name[]" aria-label="Item" placeholder="Item" maxlength="255" value="<?= e($item['name']) ?>">
+              <input class="input" name="item_quantity[]" aria-label="Quantity" placeholder="Qty" type="number" min="0.01" step="0.01" value="<?= e($item['quantity']) ?>">
+              <input class="input" name="item_price[]" aria-label="Unit price" placeholder="Unit price" type="number" min="0" step="0.01" value="<?= e($item['unit_price']) ?>">
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <button type="button" class="btn btn--sm quote-items__add" data-add-item>Add item</button>
+      </fieldset>
+
+      <label for="quote-discount-label">Promotion name (optional)</label>
+      <input class="input" id="quote-discount-label" name="label" maxlength="100" placeholder="e.g. Autumn promo" value="<?= e($quoteInput['label']) ?>">
+
+      <label for="quote-discount-value">Discount</label>
+      <div class="input-group">
+        <input class="input" id="quote-discount-value" name="value" type="number" min="0" step="0.01" required value="<?= e($quoteInput['value']) ?>">
+        <select class="input discount-type" name="type" aria-label="Discount type">
+          <option value="percent"<?= $quoteInput['type'] === 'percent' ? ' selected' : '' ?>>%</option>
+          <option value="amount"<?= $quoteInput['type'] === 'amount' ? ' selected' : '' ?>>$ amount</option>
+        </select>
+      </div>
+      <?php if ($quoteErrors): ?>
+        <p class="error"><?= e(implode(' ', $quoteErrors)) ?></p>
+      <?php endif; ?>
+
+      <label class="checkbox-label">
+        <input type="checkbox" name="send" value="1"<?= $quoteInput['send'] ? ' checked' : '' ?>>
+        Email the quotation to the customer<?= $c['email1'] !== null ? ' (' . e($c['email1']) . ')' : '' ?>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn--gold">Create quotation</button>
       </div>
     </form>
   </div>

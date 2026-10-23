@@ -694,10 +694,27 @@ button { cursor: pointer; }
 .modal fieldset { border: 0; min-width: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .modal--wide { width: 720px; }
+.modal--scroll { max-height: 100%; overflow-y: auto; }   /* long forms scroll inside the modal */
 .modal .checkbox-label { display: flex; margin: 16px 0 0; font-weight: normal; }
 .modal .error { margin-top: 6px; color: var(--danger); }
 .modal .field-hint { margin-top: 6px; }
 .discount-type { width: auto; }
+.modal legend { margin-top: 14px; font-size: clamp(0.85rem, 0.8rem + 0.25vw, 1rem); font-weight: bold; }
+.modal .checkbox-label + .checkbox-label { margin-top: 8px; }
+
+/* Items typed into a new quotation (Promotion / discount modal) */
+.quote-items { display: grid; gap: 6px; margin-top: 14px; }
+.quote-items__head,
+.quote-items__row { display: grid; grid-template-columns: minmax(0, 1fr) 5rem 8rem; gap: 6px; }
+.quote-items__head { color: var(--muted); font-size: clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem); }
+.quote-items__add { margin-top: 8px; }
+
+@media (max-width: 480px) {
+    .quote-items { gap: 12px 6px; }
+    .quote-items__head { display: none; }
+    .quote-items__row { grid-template-columns: 1fr 1fr; }
+    .quote-items__name { grid-column: 1 / -1; }
+}
 
 /* ===== DETAIL VIEW ===== */
 .profile {

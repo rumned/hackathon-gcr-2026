@@ -35,6 +35,32 @@ document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
   });
 });
 
+// ---------- Promotion / discount for a customer with no quotation (detail view) ----------
+// Shows the deal or the item rows, whichever is chosen. The hidden one is disabled, so it is not sent.
+var quoteForm = document.querySelector('[data-quote-form]');
+if (quoteForm) {
+  quoteForm.querySelectorAll('[data-quote-source]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      quoteForm.querySelectorAll('[data-quote-panel]').forEach(function (panel) {
+        var show = panel.dataset.quotePanel === radio.value;
+        panel.hidden = !show;
+        panel.disabled = !show;
+      });
+    });
+  });
+
+  // Add item: copies the last row with its fields emptied (quantity back to 1)
+  quoteForm.querySelector('[data-add-item]').addEventListener('click', function () {
+    var rows = quoteForm.querySelector('[data-quote-items]');
+    var row = rows.lastElementChild.cloneNode(true);
+    row.querySelectorAll('input').forEach(function (input) {
+      input.value = input.name === 'item_quantity[]' ? '1' : '';
+    });
+    rows.appendChild(row);
+    row.querySelector('input').focus();
+  });
+}
+
 // ---------- Select all rows (list view) ----------
 var selectAll = document.querySelector('[data-select-all]');
 if (selectAll) {
