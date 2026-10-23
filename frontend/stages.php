@@ -88,7 +88,7 @@ require __DIR__ . '/includes/layout-top.php';
               <p class="board-card__line"><a href="mailto:<?= e($card['email1']) ?>"><?= e($card['email1']) ?></a></p>
             <?php endif; ?>
             <?php if ($phones): ?>
-              <p class="board-card__line"><?= e(implode(' · ', $phones)) ?></p>
+              <p class="board-card__line"><?= implode(' · ', array_map(fn ($phone) => '<span class="board-card__phone">' . e($phone) . '</span>', $phones)) ?></p>
             <?php endif; ?>
             <?php if ($place !== ''): ?>
               <p class="board-card__line"><?= e($place) ?></p>

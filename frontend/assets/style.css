@@ -1043,6 +1043,7 @@ fieldset.form-field { border: 0; }
 .board__cards.is-over { background: var(--gold-faint); outline: 2px dashed var(--gold); outline-offset: -4px; }
 /* Landscape cards: wider than tall, compact so all six stages fit on one page */
 .board-card {
+    flex-shrink: 0;   /* keep the full card height; the column scrolls instead */
     width: 100%;
     min-width: 0;
     padding: 6px 8px;
@@ -1077,6 +1078,12 @@ fieldset.form-field { border: 0; }
 .board-card__line a { overflow: hidden; text-overflow: ellipsis; }
 .board-card__line .status { padding: 1px 6px; font-size: clamp(0.54rem, 0.5rem + 0.2vw, 0.62rem); }
 .board-card__date-row { display: flex; align-items: center; gap: 4px; }
+/* Won cards: details wrap onto more lines instead of being cut off.
+   Each phone number moves to the next line whole rather than splitting in the middle. */
+.board__column[data-status="Won"] .board-card__name,
+.board__column[data-status="Won"] .board-card__line { white-space: normal; overflow-wrap: anywhere; }
+.board__column[data-status="Won"] .board-card__date-row { flex-wrap: wrap; }
+.board-card__phone { display: inline-block; }
 .board-card__date-label { flex: none; }
 .board-card__foot {
     display: flex;
